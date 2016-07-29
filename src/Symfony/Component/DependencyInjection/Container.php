@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\DependencyInjection;
 
+use Symfony\Component\DependencyInjection\Exception\EnvironmentVariableNotFoundException;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceException;
@@ -149,6 +150,26 @@ class Container implements ResettableContainerInterface
     public function setParameter($name, $value)
     {
         $this->parameterBag->set($name, $value);
+    }
+
+    /**
+     * @internal
+     */
+    public function getEnvironmentVariable($name, $default = null)
+    {
+        if (isset($_ENV[$name])) {
+            return $_ENV[$name];
+        }
+
+        if (false !== $value = getenv($name)) {
+            return $value;
+        }
+
+        if (2 > func_num_args()) {
+            throw new EnvironmentVariableNotFoundException($name);
+        }
+
+        return $default;
     }
 
     /**
