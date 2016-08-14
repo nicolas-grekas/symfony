@@ -872,7 +872,7 @@ table.logs .sf-call-stack abbr {
     {{ mixins.monospace_font|raw }}
 }
 #collector-content pre.sf-dump {
-    background: #222;
+    background: #F9F9F9;
     line-height: 1.4;
     margin-top: .5em;
     padding: 1em;
@@ -889,9 +889,16 @@ table.logs .sf-call-stack abbr {
 #collector-content .sf-dump-str { color: #629755; }
 #collector-content .sf-dump-private,
 #collector-content .sf-dump-protected,
-#collector-content .sf-dump-public { color: #E0E0E0; }
+#collector-content .sf-dump-public { color: #262626; }
 #collector-content .sf-dump-note { color: #6897BB; }
-#collector-content .sf-dump-key { color: #A5C261; }
+#collector-content .sf-dump-key { color: #789339; }
+#collector-content .sf-dump-ref { color: #6E6E6E; }
+
+#collector-content .dump-inline .sf-dump {
+    margin: 0;
+    padding: 0;
+    background: none;
+}
 
 #collector-content .sf-dump .trace {
     border: 1px solid #DDD;

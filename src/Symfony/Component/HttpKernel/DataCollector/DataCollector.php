@@ -12,6 +12,9 @@
 namespace Symfony\Component\HttpKernel\DataCollector;
 
 use Symfony\Component\HttpKernel\DataCollector\Util\ValueExporter;
+use Symfony\Component\VarDumper\Cloner\ClonerInterface;
+use Symfony\Component\VarDumper\Cloner\Data;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
 
 /**
  * DataCollector.
@@ -30,6 +33,11 @@ abstract class DataCollector implements DataCollectorInterface, \Serializable
      */
     private $valueExporter;
 
+    /**
+     * @var ClonerInterface
+     */
+    private $cloner;
+
     public function serialize()
     {
         return serialize($this->data);
@@ -41,14 +49,37 @@ abstract class DataCollector implements DataCollectorInterface, \Serializable
     }
 
     /**
+     * Converts the variable into a serializable Data instance.
+     *
+     * This array can be displayed in the template using
+     * the VarDumper component.
+     *
+     * @param mixed $var
+     *
+     * @return Data
+     */
+    protected function cloneVar($var)
+    {
+        if (null === $this->cloner) {
+            $this->cloner = new VarCloner();
+        }
+
+        return $this->cloner->cloneVar($var);
+    }
+
+    /**
      * Converts a PHP variable to a string.
      *
      * @param mixed $var A PHP variable
      *
      * @return string The string representation of the variable
+     *
+     * @deprecated Deprecated since version 3.2, to be removed in 4.0. Use cloneVar() instead.
      */
     protected function varToString($var)
     {
+        @trigger_error(sprintf('The %() method is deprecated since version 3.2 and will be removed in 4.0. Use cloneVar() instead.', __METHOD__), E_USER_DEPRECATED);
+
         if (null === $this->valueExporter) {
             $this->valueExporter = new ValueExporter();
         }

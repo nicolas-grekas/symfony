@@ -474,7 +474,7 @@
                 </a>
             </h3>
 
-            <table id="{{ data.id }}-errors">
+            <table id="{{ data.id }}-errors" class="dump-inline">
                 <thead>
                     <tr>
                         <th>Message</th>
@@ -496,29 +496,12 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% for trace in error.trace %}
-                            {% if not loop.first %}
-                                <span class="newline">Caused by:</span>
-                            {% endif %}
-
-                            {% if trace.root is defined %}
-                                <strong class="newline">{{ trace.class }}</strong>
-                                <pre>
-                                    {{- trace.root -}}
-                                    {%- if trace.path is not empty -%}
-                                        {%- if trace.path|first != '[' %}.{% endif -%}
-                                        {{- trace.path -}}
-                                    {%- endif %} = {{ trace.value -}}
-                                </pre>
-                            {% elseif trace.message is defined %}
-                                <strong class="newline">{{ trace.class }}</strong>
-                                <pre>{{ trace.message }}</pre>
-                            {% else %}
-                                <pre>{{ trace }}</pre>
-                            {% endif %}
+                        {% if error.trace %}
+                            <span class="newline">Caused by:</span>
+                            {{ profiler_dump(error.trace, maxDepth=2) }}
                         {% else %}
                             <em>Unknown.</em>
-                        {% endfor %}
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -535,7 +518,7 @@
         </h3>
 
         <div id="{{ data.id }}-default_data">
-            <table>
+            <table class="dump-inline">
                 <thead>
                     <tr>
                         <th width="180">Property</th>
@@ -547,7 +530,7 @@
                         <th class="font-normal" scope="row">Model Format</th>
                         <td>
                             {% if data.default_data.model is defined %}
-                                {{ data.default_data.model }}
+                                {{ profiler_dump(data.default_data.model) }}
                             {% else %}
                                 <em class="font-normal text-muted">same as normalized format</em>
                             {% endif %}
@@ -555,13 +538,13 @@
                     </tr>
                     <tr>
                         <th class="font-normal" scope="row">Normalized Format</th>
-                        <td>{{ data.default_data.norm }}</td>
+                        <td>{{ profiler_dump(data.default_data.norm) }}</td>
                     </tr>
                     <tr>
                         <th class="font-normal" scope="row">View Format</th>
                         <td>
                             {% if data.default_data.view is defined %}
-                                {{ data.default_data.view }}
+                                {{ profiler_dump(data.default_data.view) }}
                             {% else %}
                                 <em class="font-normal text-muted">same as normalized format</em>
                             {% endif %}
@@ -581,7 +564,7 @@
 
         <div id="{{ data.id }}-submitted_data">
         {% if data.submitted_data.norm is defined %}
-            <table>
+            <table class="dump-inline">
                 <thead>
                     <tr>
                         <th width="180">Property</th>
@@ -593,7 +576,7 @@
                         <th class="font-normal" scope="row">View Format</th>
                         <td>
                             {% if data.submitted_data.view is defined %}
-                                {{ data.submitted_data.view }}
+                                {{ profiler_dump(data.submitted_data.view) }}
                             {% else %}
                                 <em class="font-normal text-muted">same as normalized format</em>
                             {% endif %}
@@ -601,13 +584,13 @@
                     </tr>
                     <tr>
                         <th class="font-normal" scope="row">Normalized Format</th>
-                        <td>{{ data.submitted_data.norm }}</td>
+                        <td>{{ profiler_dump(data.submitted_data.norm) }}</td>
                     </tr>
                     <tr>
                         <th class="font-normal" scope="row">Model Format</th>
                         <td>
                             {% if data.submitted_data.model is defined %}
-                                {{ data.submitted_data.model }}
+                                {{ profiler_dump(data.submitted_data.model) }}
                             {% else %}
                                 <em class="font-normal text-muted">same as normalized format</em>
                             {% endif %}
@@ -632,7 +615,7 @@
 
         <div id="{{ data.id }}-passed_options">
             {% if data.passed_options|length %}
-            <table>
+            <table class="dump-inline">
                 <thead>
                     <tr>
                         <th width="180">Option</th>
@@ -644,12 +627,12 @@
                 {% for option, value in data.passed_options %}
                 <tr>
                     <th>{{ option }}</th>
-                    <td>{{ value }}</td>
+                    <td>{{ profiler_dump(value) }}</td>
                     <td>
-                        {% if data.resolved_options[option] is same as(value) %}
+                        {% if data.resolved_options[option] == value %}
                             <em class="font-normal text-muted">same as passed value</em>
                         {% else %}
-                            {{ data.resolved_options[option] }}
+                            {{ profiler_dump(data.resolved_options[option]) }}
                         {% endif %}
                     </td>
                 </tr>
@@ -672,7 +655,7 @@
         </h3>
 
         <div id="{{ data.id }}-resolved_options" class="hidden">
-            <table>
+            <table class="dump-inline">
                 <thead>
                     <tr>
                         <th width="180">Option</th>
@@ -683,7 +666,7 @@
                 {% for option, value in data.resolved_options %}
                 <tr>
                     <th scope="row">{{ option }}</th>
-                    <td>{{ value }}</td>
+                    <td>{{ profiler_dump(value) }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -699,7 +682,7 @@
         </h3>
 
         <div id="{{ data.id }}-view_vars" class="hidden">
-            <table>
+            <table class="dump-inline">
                 <thead>
                     <tr>
                         <th width="180">Variable</th>
@@ -710,7 +693,7 @@
                 {% for variable, value in data.view_vars %}
                 <tr>
                     <th scope="row">{{ variable }}</th>
-                    <td>{{ value }}</td>
+                    <td>{{ profiler_dump(value) }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>

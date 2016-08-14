@@ -1,4 +1,4 @@
-<table class="{{ class|default('') }}">
+<table class="{{ class|default('dump-inline') }}">
     <thead>
         <tr>
             <th scope="col" class="key">{{ labels is defined ? labels[0] : 'Key' }}</th>
@@ -9,7 +9,7 @@
         {% for key in bag.keys|sort %}
             <tr>
                 <th>{{ key }}</th>
-                <td>{{ profiler_dump(bag.get(key)) }}</td>
+                <td>{{ profiler_dump(bag.get(key), maxDepth=maxDepth|default(0)) }}</td>
             </tr>
         {% else %}
             <tr>
