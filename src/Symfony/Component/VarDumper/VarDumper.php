@@ -29,7 +29,8 @@ class VarDumper
     {
         if (null === self::$handler) {
             $cloner = new VarCloner();
-            $dumper = 'cli' === PHP_SAPI ? new CliDumper() : new HtmlDumper();
+            $dumper = 'cli' === PHP_SAPI ? CliDumper::class : HtmlDumper::class;
+            $dumper = new $dumper(null, null, CliDumper::DUMP_LIGHT_ARRAY);
             self::$handler = function ($var) use ($cloner, $dumper) {
                 $dumper->dump($cloner->cloneVar($var));
             };

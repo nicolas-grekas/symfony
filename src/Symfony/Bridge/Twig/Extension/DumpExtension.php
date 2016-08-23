@@ -28,7 +28,7 @@ class DumpExtension extends \Twig_Extension
     public function __construct(ClonerInterface $cloner, HtmlDumper $dumper = null)
     {
         $this->cloner = $cloner;
-        $this->dumper = $dumper ?: new HtmlDumper();
+        $this->dumper = $dumper ?: new HtmlDumper(null, null, HtmlDumper::DUMP_LIGHT_ARRAY);
     }
 
     public function getFunctions()

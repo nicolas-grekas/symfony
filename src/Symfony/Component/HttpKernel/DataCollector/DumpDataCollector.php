@@ -148,9 +148,9 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
             || false === strripos($response->getContent(), '</body>')
         ) {
             if ($response->headers->has('Content-Type') && false !== strpos($response->headers->get('Content-Type'), 'html')) {
-                $this->dumper = new HtmlDumper('php://output', $this->charset);
+                $this->dumper = new HtmlDumper('php://output', $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
             } else {
-                $this->dumper = new CliDumper('php://output', $this->charset);
+                $this->dumper = new CliDumper('php://output', $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
             }
 
             foreach ($this->data as $dump) {
@@ -193,7 +193,7 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
         $data = fopen('php://memory', 'r+b');
 
         if ('html' === $format) {
-            $dumper = new HtmlDumper($data, $this->charset);
+            $dumper = new HtmlDumper($data, $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
         } else {
             throw new \InvalidArgumentException(sprintf('Invalid dump format: %s', $format));
         }
@@ -229,9 +229,9 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
             }
 
             if ('cli' !== PHP_SAPI && stripos($h[$i], 'html')) {
-                $this->dumper = new HtmlDumper('php://output', $this->charset);
+                $this->dumper = new HtmlDumper('php://output', $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
             } else {
-                $this->dumper = new CliDumper('php://output', $this->charset);
+                $this->dumper = new CliDumper('php://output', $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
             }
 
             foreach ($this->data as $i => $dump) {
@@ -281,7 +281,7 @@ class DumpDataCollector extends DataCollector implements DataDumperInterface
     {
         $html = '';
 
-        $dumper = new HtmlDumper(function ($line) use (&$html) {$html .= $line;}, $this->charset);
+        $dumper = new HtmlDumper(function ($line) use (&$html) {$html .= $line;}, $this->charset, HtmlDumper::DUMP_LIGHT_ARRAY);
         $dumper->setDumpHeader('');
         $dumper->setDumpBoundaries('', '');
 
