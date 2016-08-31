@@ -190,13 +190,17 @@ return function (root, x) {
         options = {$options},
         elt = root.getElementsByTagName('A'),
         len = elt.length,
-        i = 0, s, h,
+        i = 0, s, h, fmt,
         t = [];
 
     while (i < len) t.push(elt[i++]);
 
     for (i in x) {
         options[i] = x[i];
+    }
+    fmt = options.fileLinkFormat;
+    if (fmt && 'string' == typeof fmt) {
+        fmt = [fmt];
     }
 
     function a(e, f) {
@@ -218,20 +222,6 @@ return function (root, x) {
             refStyle.innerHTML = '';
         }
     });
-    if (options.fileLinkFormat) {
-        addEventListener(root, 'click', function (e) {
-            e = e.target;
-            while (root != e && 'CODE' != e.tagName) {
-                e = e.parentNode;
-            }
-            if ('CODE' == e.tagName) {
-                var f = e.getAttribute('data-file'), l = e.getAttribute('data-line');
-                if (f && l) {
-                    location.href = options.fileLinkFormat.replace('%f', f).replace('%l', l);
-                }
-            }
-        });
-    }
     a('mouseover', function (a) {
         if (a = idRx.exec(a.className)) {
             try {
@@ -332,6 +322,16 @@ return function (root, x) {
                     }
                 }
             }
+        } else if (fmt && (a = elt.getAttribute('data-file'))) {
+            if (fmt[1]) {
+                for (x in fmt[1]) {
+                    if (0 === a.indexOf(x)) {
+                        a = fmt[1][x] + a.substr(x.length);
+                        break;
+                    }
+                }
+            }
+            elt.href = fmt[0].replace('%l', elt.getAttribute('data-line')).replace('%f', a);
         }
     }
 
@@ -387,6 +387,7 @@ pre.sf-dump a {
     cursor: pointer;
     border: 0;
     outline: none;
+    color: inherit;
 }
 pre.sf-dump .sf-dump-ellipsis {
     display: inline-block;

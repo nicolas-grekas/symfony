@@ -16,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\VarDumper\Dumper\AbstractDumper;
 
 /**
  * DebugExtension.
@@ -46,6 +47,11 @@ class DebugExtension extends Extension
             $container->getDefinition('data_collector.dump')
                 ->replaceArgument(4, new Reference('var_dumper.cli_dumper'))
             ;
+        }
+
+        if (defined(AbstractDumper::class.'::DUMP_LIGHT_ARRAY')) {
+            $container->getDefinition('var_dumper.cli_dumper')->replaceArgument(2, AbstractDumper::DUMP_LIGHT_ARRAY);
+            $container->getDefinition('var_dumper.html_dumper')->replaceArgument(2, AbstractDumper::DUMP_LIGHT_ARRAY);
         }
     }
 
