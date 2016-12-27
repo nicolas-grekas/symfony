@@ -146,9 +146,25 @@ class YamlFileLoader extends FileLoader
         if (!is_array($content['services'])) {
             throw new InvalidArgumentException(sprintf('The "services" key should contain an array in %s. Check your YAML syntax.', $file));
         }
+        if (isset($content['services']['_defaults'])) {
+            $defaults = $content['services']['_defaults'];
+            $defaultKeys = array('public', 'tags', 'autowire');
+            unset($content['services']['_defaults']);
+
+            if (!is_array($defaults)) {
+                throw new InvalidArgumentException(sprintf('Service defaults must be an array, "%s" given in "%s".', gettype($defaults), $file));
+            }
+            foreach ($defaults as $key => $default) {
+                if (!in_array($key, $defaultKeys)) {
+                    throw new InvalidArgumentException(sprintf('The configuration key "%s" cannot be used to define a default value in "%s". Allowed keys are "%s".', $key, $file, implode('", "', $defaultKeys)));
+                }
+            }
+        } else {
+            $defaults = array();
+        }
 
         foreach ($content['services'] as $id => $service) {
-            $this->parseDefinition($id, $service, $file);
+            $this->parseDefinition($id, $service, $file, $defaults);
         }
     }
 
@@ -158,10 +174,11 @@ class YamlFileLoader extends FileLoader
      * @param string $id
      * @param array  $service
      * @param string $file
+     * @param array  $defaults
      *
      * @throws InvalidArgumentException When tags are invalid
      */
-    private function parseDefinition($id, $service, $file)
+    private function parseDefinition($id, $service, $file, array $defaults)
     {
         if (is_string($service) && 0 === strpos($service, '@')) {
             $this->container->setAlias($id, substr($service, 1));
@@ -176,7 +193,7 @@ class YamlFileLoader extends FileLoader
         static::checkDefinition($id, $service, $file);
 
         if (isset($service['alias'])) {
-            $public = !array_key_exists('public', $service) || (bool) $service['public'];
+            $public = array_key_exists('public', $service) ? (bool) $service['public'] : !empty($defaults['public']);
             $this->container->setAlias($id, new Alias($service['alias'], $public));
 
             foreach ($service as $key => $value) {
@@ -190,6 +207,7 @@ class YamlFileLoader extends FileLoader
 
         if (isset($service['parent'])) {
             $definition = new ChildDefinition($service['parent']);
+            $defaults = array();
         } else {
             $definition = new Definition();
         }
@@ -210,8 +228,9 @@ class YamlFileLoader extends FileLoader
             $definition->setLazy($service['lazy']);
         }
 
-        if (isset($service['public'])) {
-            $definition->setPublic($service['public']);
+        $public = isset($service['public']) ? $service['public'] : (isset($defaults['public']) ? $defaults['public'] : null);
+        if (null !== $public) {
+            $definition->setPublic($public);
         }
 
         if (isset($service['abstract'])) {
@@ -260,12 +279,13 @@ class YamlFileLoader extends FileLoader
             }
         }
 
-        if (isset($service['tags'])) {
-            if (!is_array($service['tags'])) {
+        $tags = isset($service['tags']) ? $service['tags'] : (isset($defaults['tags']) ? $defaults['tags'] : null);
+        if (null !== $tags) {
+            if (!is_array($tags)) {
                 throw new InvalidArgumentException(sprintf('Parameter "tags" must be an array for service "%s" in %s. Check your YAML syntax.', $id, $file));
             }
 
-            foreach ($service['tags'] as $tag) {
+            foreach ($tags as $tag) {
                 if (!is_array($tag)) {
                     $tag = array('name' => $tag);
                 }
@@ -301,11 +321,12 @@ class YamlFileLoader extends FileLoader
             $definition->setDecoratedService($service['decorates'], $renameId, $priority);
         }
 
-        if (isset($service['autowire'])) {
-            if (is_array($service['autowire'])) {
-                $definition->setAutowiredMethods($service['autowire']);
+        $autowire = isset($service['autowire']) ? $service['autowire'] : (isset($defaults['autowire']) ? $defaults['autowire'] : null);
+        if (null !== $autowire) {
+            if (is_array($autowire)) {
+                $definition->setAutowiredMethods($autowire);
             } else {
-                $definition->setAutowired($service['autowire']);
+                $definition->setAutowired($autowire);
             }
         }
 
