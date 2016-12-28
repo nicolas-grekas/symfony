@@ -607,7 +607,7 @@ class XmlFileLoaderTest extends \PHPUnit_Framework_TestCase
         $this->assertSame(array('foo' => array(array())), $container->getDefinition('with_defaults')->getTags());
         $this->assertSame(array('bar' => array(array())), $container->getDefinition('no_defaults')->getTags());
         $this->assertSame(array('bar' => array(array())), $container->getDefinition('no_defaults_child')->getTags());
-        $this->assertSame(array('foo' => array(array())), $container->getDefinition('with_defaults_child')->getTags());
+        $this->assertSame(array(), $container->getDefinition('with_defaults_child')->getTags());
         $this->assertTrue($container->getDefinition('with_defaults')->isAutowired());
         $this->assertFalse($container->getDefinition('no_defaults')->isAutowired());
         $this->assertFalse($container->getDefinition('no_defaults_child')->isAutowired());

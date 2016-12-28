@@ -185,7 +185,7 @@ class XmlFileLoader extends FileLoader
 
         if ($parent = $service->getAttribute('parent')) {
             $definition = new ChildDefinition($parent);
-            $defaults = array('tags' => isset($defaults['tags']) ? $defaults['tags'] : array());
+            $defaults = array();
         } else {
             $definition = new Definition();
         }

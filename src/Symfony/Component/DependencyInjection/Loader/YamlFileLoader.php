@@ -207,7 +207,7 @@ class YamlFileLoader extends FileLoader
 
         if (isset($service['parent'])) {
             $definition = new ChildDefinition($service['parent']);
-            $defaults = array('tags' => isset($defaults['tags']) ? $defaults['tags'] : array());
+            $defaults = array();
         } else {
             $definition = new Definition();
         }
