@@ -116,10 +116,46 @@ class XmlFileLoader extends FileLoader
         }
 
         foreach ($services as $service) {
-            if (null !== $definition = $this->parseDefinition($service, $file)) {
+            if (null !== $definition = $this->parseDefinition($service, $file, $this->getServiceDefaults($xml))) {
                 $this->container->setDefinition((string) $service->getAttribute('id'), $definition);
             }
         }
+    }
+
+    /**
+     * Get service defaults
+     *
+     * @param \DOMDocument $xml
+     *
+     * @return array
+     */
+    private function getServiceDefaults(\DOMDocument $xml)
+    {
+        $xpath = new \DOMXPath($xml);
+        $xpath->registerNamespace('container', self::NS);
+
+        $defaults = array();
+
+        if (null === $defaultsNode = $xpath->query('//container:services/container:defaults')->item(0)) {
+            return $defaults;
+        }
+
+        if ($defaultsNode->hasAttribute('public')) {
+            $defaults['public'] = XmlUtils::phpize($defaultsNode->getAttribute('public'));
+        }
+
+        if ($defaultsNode->hasAttribute('autowire')) {
+            $defaults['autowire'] = XmlUtils::phpize($defaultsNode->getAttribute('autowire'));
+        }
+
+        $defaults['tags'] = $this->getChildren($defaultsNode, 'tag');
+
+        $defaults['autowire_methods'] = [];
+        foreach ($this->getChildren($defaultsNode, 'autowire') as $type) {
+            $defaults['autowire_methods'][] = $type->textContent;
+        }
+
+        return $defaults;
     }
 
     /**
@@ -127,10 +163,11 @@ class XmlFileLoader extends FileLoader
      *
      * @param \DOMElement $service
      * @param string      $file
+     * @param array       $defaults
      *
      * @return Definition|null
      */
-    private function parseDefinition(\DOMElement $service, $file)
+    private function parseDefinition(\DOMElement $service, $file, array $defaults = array())
     {
         if ($alias = $service->getAttribute('alias')) {
             $this->validateAlias($service, $file);
@@ -138,6 +175,8 @@ class XmlFileLoader extends FileLoader
             $public = true;
             if ($publicAttr = $service->getAttribute('public')) {
                 $public = XmlUtils::phpize($publicAttr);
+            } elseif (isset($defaults['public'])) {
+                $public = $defaults['public'];
             }
             $this->container->setAlias((string) $service->getAttribute('id'), new Alias($alias, $public));
 
@@ -146,11 +185,18 @@ class XmlFileLoader extends FileLoader
 
         if ($parent = $service->getAttribute('parent')) {
             $definition = new ChildDefinition($parent);
+            $defaults = array();
         } else {
             $definition = new Definition();
         }
 
-        foreach (array('class', 'shared', 'public', 'synthetic', 'lazy', 'abstract') as $key) {
+        if ($publicAttr = $service->getAttribute('public')) {
+            $definition->setPublic(XmlUtils::phpize($publicAttr));
+        } elseif (isset($defaults['public'])) {
+            $definition->setPublic($defaults['public']);
+        }
+
+        foreach (array('class', 'shared', 'synthetic', 'lazy', 'abstract') as $key) {
             if ($value = $service->getAttribute($key)) {
                 $method = 'set'.$key;
                 $definition->$method(XmlUtils::phpize($value));
@@ -159,6 +205,8 @@ class XmlFileLoader extends FileLoader
 
         if ($value = $service->getAttribute('autowire')) {
             $definition->setAutowired(XmlUtils::phpize($value));
+        } elseif (isset($defaults['autowire'])) {
+            $definition->setAutowired($defaults['autowire']);
         }
 
         if ($files = $this->getChildren($service, 'file')) {
@@ -214,7 +262,12 @@ class XmlFileLoader extends FileLoader
             $definition->addMethodCall($call->getAttribute('method'), $this->getArgumentsAsPhp($call, 'argument'));
         }
 
-        foreach ($this->getChildren($service, 'tag') as $tag) {
+        $tags = $this->getChildren($service, 'tag');
+        if (0 === count($tags) && isset($defaults['tags'])) {
+            $tags = $defaults['tags'];
+        }
+
+        foreach ($tags as $tag) {
             $parameters = array();
             foreach ($tag->attributes as $name => $node) {
                 if ('name' === $name) {
@@ -242,6 +295,10 @@ class XmlFileLoader extends FileLoader
         $autowireTags = array();
         foreach ($this->getChildren($service, 'autowire') as $type) {
             $autowireTags[] = $type->textContent;
+        }
+
+        if (0 === count($autowireTags) && isset($defaults['autowire_methods'])) {
+            $autowireTags = $defaults['autowire_methods'];
         }
 
         if ($autowireTags) {
