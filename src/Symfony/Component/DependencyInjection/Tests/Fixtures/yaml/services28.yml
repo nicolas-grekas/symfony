@@ -25,3 +25,6 @@ services:
         autowire: ~
         tags:
             - name: bar
+
+    with_defaults_child:
+        parent: with_defaults
