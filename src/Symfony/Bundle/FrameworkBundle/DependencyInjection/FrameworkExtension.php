@@ -28,7 +28,6 @@ use Symfony\Component\Config\Resource\DirectoryResource;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\Config\Resource\ClassExistenceResource;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 use Symfony\Component\Serializer\Encoder\YamlEncoder;
 use Symfony\Component\Serializer\Encoder\CsvEncoder;
@@ -85,8 +84,7 @@ class FrameworkExtension extends Extension
 
         $loader->load('fragment_renderer.xml');
 
-        $container->addResource(new ClassExistenceResource(Application::class));
-        if (class_exists(Application::class)) {
+        if ($container->classExists(Application::class)) {
             $loader->load('console.xml');
         }
 
@@ -525,7 +523,7 @@ class FrameworkExtension extends Extension
         $definition->replaceArgument(4, $debug);
         $definition->replaceArgument(6, $debug);
 
-        if ($debug && class_exists(DebugProcessor::class)) {
+        if ($debug && $container->classExists(DebugProcessor::class)) {
             $definition = new Definition(DebugProcessor::class);
             $definition->setPublic(false);
             $container->setDefinition('debug.log_processor', $definition);
@@ -1252,7 +1250,7 @@ class FrameworkExtension extends Extension
             $container->getDefinition('serializer.mapping.class_metadata_factory')->replaceArgument(
                 1, new Reference($config['cache'])
             );
-        } elseif (!$container->getParameter('kernel.debug') && class_exists(CacheClassMetadataFactory::class)) {
+        } elseif (!$container->getParameter('kernel.debug') && $container->classExists(CacheClassMetadataFactory::class)) {
             $cacheMetadataFactory = new Definition(
                 CacheClassMetadataFactory::class,
                 array(
