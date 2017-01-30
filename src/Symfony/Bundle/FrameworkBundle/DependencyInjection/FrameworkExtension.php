@@ -858,17 +858,17 @@ class FrameworkExtension extends Extension
 
         // Discover translation directories
         $dirs = array();
-        if (class_exists('Symfony\Component\Validator\Validation')) {
+        if ($container->classExists('Symfony\Component\Validator\Validation')) {
             $r = new \ReflectionClass('Symfony\Component\Validator\Validation');
 
             $dirs[] = dirname($r->getFileName()).'/Resources/translations';
         }
-        if (class_exists('Symfony\Component\Form\Form')) {
+        if ($container->classExists('Symfony\Component\Form\Form')) {
             $r = new \ReflectionClass('Symfony\Component\Form\Form');
 
             $dirs[] = dirname($r->getFileName()).'/Resources/translations';
         }
-        if (class_exists('Symfony\Component\Security\Core\Exception\AuthenticationException')) {
+        if ($container->classExists('Symfony\Component\Security\Core\Exception\AuthenticationException')) {
             $r = new \ReflectionClass('Symfony\Component\Security\Core\Exception\AuthenticationException');
 
             $dirs[] = dirname(dirname($r->getFileName())).'/Resources/translations';
@@ -1148,34 +1148,34 @@ class FrameworkExtension extends Extension
      */
     private function registerSerializerConfiguration(array $config, ContainerBuilder $container, XmlFileLoader $loader)
     {
-        if (class_exists('Symfony\Component\Serializer\Normalizer\DataUriNormalizer')) {
+        if ($container->classExists('Symfony\Component\Serializer\Normalizer\DataUriNormalizer')) {
             // Run after serializer.normalizer.object
             $definition = $container->register('serializer.normalizer.data_uri', DataUriNormalizer::class);
             $definition->setPublic(false);
             $definition->addTag('serializer.normalizer', array('priority' => -920));
         }
 
-        if (class_exists('Symfony\Component\Serializer\Normalizer\DateTimeNormalizer')) {
+        if ($container->classExists('Symfony\Component\Serializer\Normalizer\DateTimeNormalizer')) {
             // Run before serializer.normalizer.object
             $definition = $container->register('serializer.normalizer.datetime', DateTimeNormalizer::class);
             $definition->setPublic(false);
             $definition->addTag('serializer.normalizer', array('priority' => -910));
         }
 
-        if (class_exists('Symfony\Component\Serializer\Normalizer\JsonSerializableNormalizer')) {
+        if ($container->classExists('Symfony\Component\Serializer\Normalizer\JsonSerializableNormalizer')) {
             // Run before serializer.normalizer.object
             $definition = $container->register('serializer.normalizer.json_serializable', JsonSerializableNormalizer::class);
             $definition->setPublic(false);
             $definition->addTag('serializer.normalizer', array('priority' => -900));
         }
 
-        if (class_exists(YamlEncoder::class) && defined('Symfony\Component\Yaml\Yaml::DUMP_OBJECT')) {
+        if ($container->classExists(YamlEncoder::class) && defined('Symfony\Component\Yaml\Yaml::DUMP_OBJECT')) {
             $definition = $container->register('serializer.encoder.yaml', YamlEncoder::class);
             $definition->setPublic(false);
             $definition->addTag('serializer.encoder');
         }
 
-        if (class_exists(CsvEncoder::class)) {
+        if ($container->classExists(CsvEncoder::class)) {
             $definition = $container->register('serializer.encoder.csv', CsvEncoder::class);
             $definition->setPublic(false);
             $definition->addTag('serializer.encoder');
