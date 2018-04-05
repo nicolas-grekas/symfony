@@ -1,0 +1,9 @@
+
+Array
+(
+    [0] => Content-Type: text/plain; charset=utf-8
+    [1] => Cache-Control: no-cache, private
+    [2] => Date: Thu, 02 Feb 2012 12:12:12 GMT
+    [3] => Set-Cookie: SameSite=Strict; path=/; httponly
+)
+shutdown

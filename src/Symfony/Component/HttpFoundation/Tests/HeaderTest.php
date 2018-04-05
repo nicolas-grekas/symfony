@@ -9,14 +9,11 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\HttpFoundation\Tests\Session\Storage\Handler;
+namespace Symfony\Component\HttpFoundation\Tests;
 
 use PHPUnit\Framework\TestCase;
 
-/**
- * @requires PHP 7.0
- */
-class AbstractCookieHandlerTest extends TestCase
+class HeaderTest extends TestCase
 {
     private static $server;
 
@@ -26,7 +23,7 @@ class AbstractCookieHandlerTest extends TestCase
             1 => array('file', '/dev/null', 'w'),
             2 => array('file', '/dev/null', 'w'),
         );
-        if (!self::$server = @proc_open('exec php -S localhost:8053', $spec, $pipes, __DIR__.'/Fixtures')) {
+        if (!self::$server = @proc_open('exec php -S localhost:8054', $spec, $pipes, __DIR__.'/Fixtures')) {
             self::markTestSkipped('PHP server unable to start.');
         }
         sleep(1);
@@ -42,8 +39,8 @@ class AbstractCookieHandlerTest extends TestCase
 
     public function testHeader()
     {
-        $result = file_get_contents('http://localhost:8053/native_header.php');
-        $this->assertStringEqualsFile(__DIR__.'/Fixtures/native_header.expected', $result);
+        $result = file_get_contents('http://localhost:8054/send_headers_cookie_samesite.php');
+        $this->assertStringEqualsFile(__DIR__ . '/Fixtures/send_headers_cookie_samesite.expected', $result);
     }
 
 }
