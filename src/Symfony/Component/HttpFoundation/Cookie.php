@@ -145,12 +145,12 @@ class Cookie
         $str = ($this->isRaw() ? $this->getName() : urlencode($this->getName())).'=';
 
         if ('' === (string) $this->getValue()) {
-            $str .= 'deleted; expires='.gmdate('D, d-M-Y H:i:s T', time() - 31536001).'; max-age=-31536001';
+            $str .= 'deleted; expires='.gmdate('D, d-M-Y H:i:s T', time() - 31536001).'; Max-Age=-31536001';
         } else {
             $str .= $this->isRaw() ? $this->getValue() : rawurlencode($this->getValue());
 
             if (0 !== $this->getExpiresTime()) {
-                $str .= '; expires='.gmdate('D, d-M-Y H:i:s T', $this->getExpiresTime()).'; max-age='.$this->getMaxAge();
+                $str .= '; expires='.gmdate('D, d-M-Y H:i:s T', $this->getExpiresTime()).'; Max-Age='.$this->getMaxAge();
             }
         }
 
@@ -218,13 +218,19 @@ class Cookie
     }
 
     /**
-     * Gets the max-age attribute.
+     * Gets the Max-Age attribute.
      *
      * @return int
      */
     public function getMaxAge()
     {
-        return 0 !== $this->expire ? $this->expire - time() : 0;
+        if ($this->expire - time() <= 0){
+            return 0;
+        }
+
+        return $this->expire - time();
+
+//        return 0 !== $this->expire ? $this->expire - time() : 0;
     }
 
     /**

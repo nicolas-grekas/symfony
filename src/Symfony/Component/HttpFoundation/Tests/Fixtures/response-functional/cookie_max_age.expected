@@ -1,0 +1,10 @@
+
+Array
+(
+    [0] => Content-Type: text/plain; charset=utf-8
+    [1] => Cache-Control: no-cache, private
+    [2] => Date: Sat, 12 Nov 1955 20:04:00 GMT
+    [3] => Set-Cookie: foo=bar; expires=Sat, 01-Jan-2000 18:00:00 GMT; Max-Age=0; path=/
+    [4] => Set-Cookie: foo=bar; expires=Sat, 01-Jan-2000 18:00:00 GMT; Max-Age=0; path=/
+)
+shutdown
