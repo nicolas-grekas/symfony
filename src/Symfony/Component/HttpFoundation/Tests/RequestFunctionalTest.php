@@ -13,7 +13,7 @@ namespace Symfony\Component\HttpFoundation\Tests;
 
 use PHPUnit\Framework\TestCase;
 
-class HeaderTest extends TestCase
+class RequestFunctionalTest extends TestCase
 {
     private static $server;
 
@@ -37,10 +37,19 @@ class HeaderTest extends TestCase
         }
     }
 
-    public function testHeader()
+    /**
+     * @dataProvider provideCookie
+     */
+    public function testCookieSamesite($fixture)
     {
-        $result = file_get_contents('http://localhost:8054/send_headers_cookie_samesite.php');
-        $this->assertStringEqualsFile(__DIR__ . '/Fixtures/send_headers_cookie_samesite.expected', $result);
+        $result = file_get_contents(sprintf('http://localhost:8054/%s.php', $fixture));
+        $this->assertStringEqualsFile(__DIR__.sprintf('/Fixtures/%s.expected', $fixture), $result);
     }
 
+    public function provideCookie()
+    {
+        foreach (glob(__DIR__.'/Fixtures/cookie_*.php') as $file) {
+            yield array(pathinfo($file, PATHINFO_FILENAME));
+        }
+    }
 }
