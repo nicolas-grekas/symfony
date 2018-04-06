@@ -13,6 +13,9 @@ namespace Symfony\Component\HttpFoundation\Tests;
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @requires PHP 7.0
+ */
 class ResponseFunctionalTest extends TestCase
 {
     private static $server;
