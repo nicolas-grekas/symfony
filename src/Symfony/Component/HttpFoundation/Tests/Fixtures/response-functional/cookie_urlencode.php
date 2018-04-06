@@ -4,5 +4,9 @@ use Symfony\Component\HttpFoundation\Cookie;
 
 $r = require __DIR__ . '/common.inc';
 
-$r->headers->setCookie(new Cookie('https://blackfire.io/?*():@&+$/%#[]', 'https://blackfire.io/?*():@&+$/%#[]'));
+$url = 'https://blackfire.io/?*():@&+$/%#[]';
+
+$r->headers->setCookie(new Cookie($url, $url, 0, '', null, false, false));
 $r->sendHeaders();
+
+setcookie($url,$url, 0, '/');

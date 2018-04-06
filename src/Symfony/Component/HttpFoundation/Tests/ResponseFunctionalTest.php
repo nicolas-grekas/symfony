@@ -43,30 +43,15 @@ class ResponseFunctionalTest extends TestCase
     /**
      * @dataProvider provideCookie
      */
-    public function testCookieSamesite($fixture)
+    public function testCookie($fixture)
     {
-        $result = file_get_contents(sprintf('http://localhost:8054/%s.php', $fixture));
+        $result = file_get_contents(sprintf('http://localhost:8054/response-functional/%s.php', $fixture));
         $this->assertStringEqualsFile(__DIR__.sprintf('/Fixtures/response-functional/%s.expected', $fixture), $result);
-    }
-
-    public function testCookieShouldThrowExceptionForInvalidName()
-    {
-        $result = file_get_contents('http://localhost:8054/response-functional/invalid_cookie_name.php');
-        $this->assertStringEqualsFile(__DIR__.'/Fixtures/response-functional/invalid_cookie_name.expected', $result);
-    }
-
-    public function testcookieShouldUrlEncode()
-    {
-        $url = 'https://blackfire.io/?*():@&+$/%#[]';
-        setcookie($url,$url);
-        //WIP
-        $result = file_get_contents('http://localhost:8054/response-functional/cookie_urlencode.php');
-        $this->assertStringEqualsFile(__DIR__.'/Fixtures/response-functional/cookie_urlencode.expected', $result);
     }
 
     public function provideCookie()
     {
-        foreach (glob(__DIR__.'/Fixtures/response-functional/cookie_*.php') as $file) {
+        foreach (glob(__DIR__.'/Fixtures/response-functional/*.php') as $file) {
             yield array(pathinfo($file, PATHINFO_FILENAME));
         }
     }
