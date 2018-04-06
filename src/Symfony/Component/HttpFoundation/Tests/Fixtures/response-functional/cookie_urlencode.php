@@ -1,7 +1,6 @@
 <?php
 
 use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\Response;
 
 $r = require __DIR__ . '/common.inc';
 
