@@ -49,6 +49,12 @@ class ResponseFunctionalTest extends TestCase
         $this->assertStringEqualsFile(__DIR__.sprintf('/Fixtures/response-functional/%s.expected', $fixture), $result);
     }
 
+    public function testCookieShouldThrowExceptionForInvalidName()
+    {
+        $result = file_get_contents('http://localhost:8054/invalid_cookie_name.php');
+        $this->assertStringEqualsFile(__DIR__.'/Fixtures/invalid_cookie_name.expected', $result);
+    }
+
     public function provideCookie()
     {
         foreach (glob(__DIR__.'/Fixtures/cookie_*.php') as $file) {
