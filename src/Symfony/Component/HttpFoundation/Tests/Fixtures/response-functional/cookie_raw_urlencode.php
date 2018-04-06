@@ -2,7 +2,6 @@
 
 use Symfony\Component\HttpFoundation\Cookie;
 
-/** @var \Symfony\Component\HttpFoundation\Response $r */
 $r = require __DIR__ . '/common.inc';
 
 $url = 'https://blackfire.io/?*():@&+$/%#[]';
