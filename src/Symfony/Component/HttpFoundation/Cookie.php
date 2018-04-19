@@ -218,19 +218,14 @@ class Cookie
     }
 
     /**
-     * Gets the Max-Age attribute.
+     * Gets the max-age attribute.
      *
      * @return int
      */
     public function getMaxAge()
     {
-        if ($this->expire - time() <= 0){
-            return 0;
-        }
-
-        return $this->expire - time();
-
-//        return 0 !== $this->expire ? $this->expire - time() : 0;
+       $maxAge = $this->expire - time();
+       return 0 > $maxAge ? 0 : $maxAge;
     }
 
     /**
