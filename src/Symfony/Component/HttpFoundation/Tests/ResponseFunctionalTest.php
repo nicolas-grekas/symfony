@@ -13,6 +13,9 @@ namespace Symfony\Component\HttpFoundation\Tests;
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @requires PHP 7.0
+ */
 class ResponseFunctionalTest extends TestCase
 {
     private static $server;
@@ -40,7 +43,7 @@ class ResponseFunctionalTest extends TestCase
     /**
      * @dataProvider provideCookie
      */
-    public function testCookieSamesite($fixture)
+    public function testCookie($fixture)
     {
         $result = file_get_contents(sprintf('http://localhost:8054/%s.php', $fixture));
         $this->assertStringEqualsFile(__DIR__.sprintf('/Fixtures/response-functional/%s.expected', $fixture), $result);
@@ -48,7 +51,7 @@ class ResponseFunctionalTest extends TestCase
 
     public function provideCookie()
     {
-        foreach (glob(__DIR__.'/Fixtures/cookie_*.php') as $file) {
+        foreach (glob(__DIR__.'/Fixtures/response-functional/*.php') as $file) {
             yield array(pathinfo($file, PATHINFO_FILENAME));
         }
     }
