@@ -248,7 +248,7 @@ class FormValidatorTest extends AbstractConstraintValidatorTest
             ->getForm();
 
         // Launch transformer
-        $form->submit(array());
+        $form->submit('foo');
 
         $this->expectNoValidate();
 
