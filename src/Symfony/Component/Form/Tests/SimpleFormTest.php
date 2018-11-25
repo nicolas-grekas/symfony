@@ -96,6 +96,19 @@ class SimpleFormTest extends AbstractFormTest
         $form->getData();
     }
 
+    public function testArrayTransformationFailureOnSubmit()
+    {
+        $config = new FormConfigBuilder('name', null, $this->dispatcher);
+        $config->setData('test');
+        $form = new Form($config);
+
+        $form->submit(array());
+
+        $this->assertNull($form->getData());
+        $this->assertFalse($form->isSynchronized());
+        $this->assertSame('Submitted data was expected to be text or number, array given.', $form->getTransformationFailure()->getMessage());
+    }
+
     // https://github.com/symfony/symfony/commit/d4f4038f6daf7cf88ca7c7ab089473cce5ebf7d8#commitcomment-1632879
     public function testDataIsInitializedFromSubmit()
     {
@@ -145,8 +158,8 @@ class SimpleFormTest extends AbstractFormTest
      */
     public function testSubmitThrowsExceptionIfAlreadySubmitted()
     {
-        $this->form->submit(array());
-        $this->form->submit(array());
+        $this->form->submit(null);
+        $this->form->submit(null);
     }
 
     public function testSubmitIsIgnoredIfDisabled()
@@ -231,13 +244,6 @@ class SimpleFormTest extends AbstractFormTest
     public function testGetRootReturnsSelfIfNoParent()
     {
         $this->assertSame($this->form, $this->form->getRoot());
-    }
-
-    public function testEmptyIfEmptyArray()
-    {
-        $this->form->setData(array());
-
-        $this->assertTrue($this->form->isEmpty());
     }
 
     public function testEmptyIfEmptyCountable()

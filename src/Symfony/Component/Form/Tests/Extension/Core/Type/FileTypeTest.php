@@ -195,6 +195,29 @@ class FileTypeTest extends BaseTypeTest
         );
     }
 
+    /**
+     * @dataProvider provideEmptyArrayCases
+     */
+    public function testSubmitEmptyArray($multiple = null)
+    {
+        $form = $this->factory->create(static::TESTED_TYPE, null, array(
+            'multiple' => $multiple,
+        ));
+
+        $form->submit(array());
+
+        $this->assertSame($multiple, $form->isSynchronized());
+        $this->assertSame($multiple ? array() : null, $form->getData());
+    }
+
+    public function provideEmptyArrayCases()
+    {
+        return array(
+            'Simple field' => array(false),
+            'Compound files fields' => array(true),
+        );
+    }
+
     private function createUploadedFileMock(RequestHandlerInterface $requestHandler, $path, $originalName)
     {
         if ($requestHandler instanceof HttpFoundationRequestHandler) {

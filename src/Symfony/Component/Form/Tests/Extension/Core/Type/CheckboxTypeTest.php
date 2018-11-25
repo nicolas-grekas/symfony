@@ -200,4 +200,14 @@ class CheckboxTypeTest extends BaseTypeTest
         $this->assertSame($expectedData, $form->getNormData());
         $this->assertSame($expectedData, $form->getData());
     }
+
+    public function testSubmitEmptyArray()
+    {
+        $form = $this->factory->create(static::TESTED_TYPE);
+
+        $form->submit(array());
+
+        $this->assertFalse($form->isSynchronized());
+        $this->assertFalse($form->getData(), 'An empty array should be reversed to false');
+    }
 }

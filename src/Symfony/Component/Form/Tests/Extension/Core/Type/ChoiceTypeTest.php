@@ -2623,4 +2623,30 @@ class ChoiceTypeTest extends BaseTypeTest
             'Multiple expanded' => array(true, true),
         );
     }
+
+    /**
+     * @dataProvider provideEmptyArrayCases
+     */
+    public function testSubmitEmptyArray($multiple = null, $expanded = null, $isSynchronized = null)
+    {
+        $form = $this->factory->create(static::TESTED_TYPE, null, array(
+            'choices' => array('test'),
+            'multiple' => $multiple,
+        ));
+
+        $form->submit(array());
+
+        $this->assertSame($isSynchronized, $form->isSynchronized());
+        $this->assertSame($multiple ? array() : null, $form->getData());
+    }
+
+    public function provideEmptyArrayCases()
+    {
+        return array(
+            'Simple select' => array(false, false, false),
+            'Multiple select' => array(true, false, true),
+            'Compound radio buttons' => array(false, true, false),
+            'Compound checkbox fields' => array(true, true, true),
+        );
+    }
 }

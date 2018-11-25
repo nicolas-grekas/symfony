@@ -44,4 +44,14 @@ class ButtonTypeTest extends BaseTypeTest
     {
         parent::testSubmitNullUsesDefaultEmptyData($emptyData, $expectedData);
     }
+
+    public function testSubmitEmptyArray()
+    {
+        $form = $this->factory->create(static::TESTED_TYPE);
+
+        $form->submit(array());
+
+        $this->assertTrue($form->isSynchronized(), 'A button ignores submitted data.');
+        $this->assertNull($form->getData());
+    }
 }

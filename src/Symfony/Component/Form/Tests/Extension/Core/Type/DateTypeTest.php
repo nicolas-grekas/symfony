@@ -1043,4 +1043,28 @@ class DateTypeTest extends BaseTypeTest
             'Compound choice fields' => array('choice', array('year' => '2018', 'month' => '11', 'day' => '11'), $expectedData),
         );
     }
+
+    /**
+     * @dataProvider provideEmptyArrayCases
+     */
+    public function testSubmitEmptyArray($widget = null, $isSynchronized = null)
+    {
+        $form = $this->factory->create(static::TESTED_TYPE, null, array(
+            'widget' => $widget,
+        ));
+
+        $form->submit(array());
+
+        $this->assertSame($isSynchronized, $form->isSynchronized());
+        $this->assertNull($form->getData(), 'An empty array should be reverse transformed to null when compound, or ignored.');
+    }
+
+    public function provideEmptyArrayCases()
+    {
+        return array(
+            'Simple field' => array('single_text', false),
+            'Compound text fields' => array('text', true),
+            'Compound choice fields' => array('choice', true),
+        );
+    }
 }

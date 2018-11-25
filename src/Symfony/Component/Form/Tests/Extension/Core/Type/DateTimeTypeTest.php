@@ -658,4 +658,28 @@ class DateTimeTypeTest extends BaseTypeTest
             'Compound choice field' => array('choice', array('date' => array('year' => '2018', 'month' => '11', 'day' => '11'), 'time' => array('hour' => '21', 'minute' => '23')), $expectedData),
         );
     }
+
+    /**
+     * @dataProvider provideEmptyArrayCases
+     */
+    public function testSubmitEmptyArray($widget = null, $isSynchronized = null)
+    {
+        $form = $this->factory->create(static::TESTED_TYPE, null, array(
+            'widget' => $widget,
+        ));
+
+        $form->submit(array());
+
+        $this->assertSame($isSynchronized, $form->isSynchronized());
+        $this->assertNull($form->getData(), 'An empty array should be reversed to null, or ignored');
+    }
+
+    public function provideEmptyArrayCases()
+    {
+        return array(
+            'Simple field' => array('single_text', false),
+            'Compound text fields' => array('text', true),
+            'Compound choice fields' => array('choice', true),
+        );
+    }
 }

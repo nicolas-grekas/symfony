@@ -167,6 +167,18 @@ abstract class BaseTypeTest extends TypeTestCase
         $this->assertSame($expectedData, $form->getData());
     }
 
+    public function testSubmitEmptyArray()
+    {
+        $form = $this->factory->create($this->getTestedType());
+
+        $form->submit(array());
+
+        $isCompound = $form->getConfig()->getCompound();
+
+        $this->assertSame($isCompound, $form->isSynchronized(), 'Only compound forms should be synchronized.');
+        $this->assertSame($isCompound ? array() : null, $form->getData());
+    }
+
     protected function getTestedType()
     {
         return static::TESTED_TYPE;

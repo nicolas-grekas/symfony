@@ -202,4 +202,14 @@ class RepeatedTypeTest extends BaseTypeTest
     {
         parent::testSubmitNull($expected, $norm, array('first' => null, 'second' => null));
     }
+
+    public function testSubmitEmptyArray()
+    {
+        $form = $this->factory->create(static::TESTED_TYPE);
+
+        $form->submit(array());
+
+        $this->assertTrue($form->isSynchronized());
+        $this->assertNull($form->getData());
+    }
 }

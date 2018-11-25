@@ -24,6 +24,13 @@ use Symfony\Component\HttpFoundation\Request;
 
 class CompoundFormTest extends AbstractFormTest
 {
+    public function testEmptyIfEmptyArray()
+    {
+        $this->form->setData(array());
+
+        $this->assertTrue($this->form->isEmpty());
+    }
+
     public function testValidIfAllChildrenAreValid()
     {
         $this->form->add($this->getBuilder('firstName')->getForm());
@@ -1086,22 +1093,6 @@ class CompoundFormTest extends AbstractFormTest
         $this->assertTrue($submit->isDisabled());
         $this->assertFalse($submit->isClicked());
         $this->assertFalse($submit->isSubmitted());
-    }
-
-    public function testArrayTransformationFailureOnSubmit()
-    {
-        $this->form->add($this->getBuilder('foo')->setCompound(false)->getForm());
-        $this->form->add($this->getBuilder('bar', null, null, array('multiple' => false))->setCompound(false)->getForm());
-
-        $this->form->submit(array(
-            'foo' => array('foo'),
-            'bar' => array('bar'),
-        ));
-
-        $this->assertNull($this->form->get('foo')->getData());
-        $this->assertSame('Submitted data was expected to be text or number, array given.', $this->form->get('foo')->getTransformationFailure()->getMessage());
-
-        $this->assertSame(array('bar'), $this->form->get('bar')->getData());
     }
 
     protected function createForm()
