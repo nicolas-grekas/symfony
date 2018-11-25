@@ -537,7 +537,7 @@ class Form implements \IteratorAggregate, FormInterface
             $submittedData = null;
         } elseif (is_scalar($submittedData)) {
             $submittedData = (string) $submittedData;
-        } elseif (\is_array($submittedData) && !$this->config->getCompound() && !$this->config->hasOption('multiple')) {
+        } elseif (\is_array($submittedData) && !$this->config->getCompound() && (!$this->config->hasOption('multiple') || !$this->config->getOption('multiple'))) {
             $submittedData = null;
             $this->transformationFailure = new TransformationFailedException('Submitted data was expected to be text or number, array given.');
         }

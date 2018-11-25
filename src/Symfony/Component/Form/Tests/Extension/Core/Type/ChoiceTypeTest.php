@@ -2418,8 +2418,17 @@ class ChoiceTypeTest extends BaseTypeTest
         ));
 
         $form->submit($submissionData);
+
         $this->assertFalse($form->isSynchronized());
-        $this->assertEquals('All choices submitted must be NULL, strings or ints.', $form->getTransformationFailure()->getMessage());
+
+        if (!$multiple && !$expanded) {
+            // In this case Form::submit() already handles the invalidation
+            $message = 'Submitted data was expected to be text or number, array given.';
+        } else {
+            $message = 'All choices submitted must be NULL, strings or ints.';
+        }
+
+        $this->assertEquals($message, $form->getTransformationFailure()->getMessage());
     }
 
     public function invalidNestedValueTestMatrix()
