@@ -352,7 +352,7 @@ class Definition
         if (empty($method)) {
             throw new InvalidArgumentException('Method name cannot be empty.');
         }
-        $this->calls[] = [$method, $arguments, 2 < \func_num_args() && \func_get_arg(2)];
+        $this->calls[] = 2 < \func_num_args() && \func_get_arg(2) ? [$method, $arguments, true] : [$method, $arguments];
 
         return $this;
     }
