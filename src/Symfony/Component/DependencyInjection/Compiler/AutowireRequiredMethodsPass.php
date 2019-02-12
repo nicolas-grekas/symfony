@@ -50,7 +50,7 @@ class AutowireRequiredMethodsPass extends AbstractRecursivePass
             while (true) {
                 if (false !== $doc = $r->getDocComment()) {
                     if (false !== stripos($doc, '@required') && preg_match('#(?:^/\*\*|\n\s*+\*)\s*+@required(?:\s|\*/$)#i', $doc)) {
-                        $value->addMethodCall($reflectionMethod->name);
+                        $value->addMethodCall($reflectionMethod->name, [], preg_match('#(?:^/\*\*|\n\s*+\*)\s*+@return\s++static[\s\*]#i', $doc));
                         break;
                     }
                     if (false === stripos($doc, '@inheritdoc') || !preg_match('#(?:^/\*\*|\n\s*+\*)\s*+(?:\{@inheritdoc\}|@inheritdoc)(?:\s|\*/$)#i', $doc)) {

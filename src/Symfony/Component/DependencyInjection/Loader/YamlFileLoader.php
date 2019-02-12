@@ -471,7 +471,7 @@ class YamlFileLoader extends FileLoader
                 if (!\is_array($args)) {
                     throw new InvalidArgumentException(sprintf('The second parameter for function call "%s" must be an array of its arguments for service "%s" in %s. Check your YAML syntax.', $method, $id, $file));
                 }
-                $definition->addMethodCall($method, $args);
+                $definition->addMethodCall($method, $args, $call['use_result'] ?? false);
             }
         }
 

@@ -572,7 +572,7 @@ EOF;
                 $arguments[] = $this->dumpValue($value);
             }
 
-            $calls .= $this->wrapServiceConditionals($call[1], sprintf("        \$%s->%s(%s);\n", $variableName, $call[0], implode(', ', $arguments)));
+            $calls .= $this->wrapServiceConditionals($call[1], sprintf("        %s\$%s->%s(%s);\n", empty($call[2]) ? '' : "\${$variableName} = ", $variableName, $call[0], implode(', ', $arguments)));
         }
 
         return $calls;

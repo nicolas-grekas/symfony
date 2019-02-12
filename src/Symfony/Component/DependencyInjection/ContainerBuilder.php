@@ -1150,7 +1150,7 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
         }
 
         foreach ($definition->getMethodCalls() as $call) {
-            $this->callMethod($service, $call, $inlineServices);
+            $service = $this->callMethod($service, $call, $inlineServices);
         }
 
         if ($callable = $definition->getConfigurator()) {
@@ -1568,16 +1568,18 @@ class ContainerBuilder extends Container implements TaggedContainerInterface
     {
         foreach (self::getServiceConditionals($call[1]) as $s) {
             if (!$this->has($s)) {
-                return;
+                return $service;
             }
         }
         foreach (self::getInitializedConditionals($call[1]) as $s) {
             if (!$this->doGet($s, ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE, $inlineServices)) {
-                return;
+                return $service;
             }
         }
 
-        $service->{$call[0]}(...$this->doResolveServices($this->getParameterBag()->unescapeValue($this->getParameterBag()->resolveValue($call[1])), $inlineServices));
+        $result = $service->{$call[0]}(...$this->doResolveServices($this->getParameterBag()->unescapeValue($this->getParameterBag()->resolveValue($call[1])), $inlineServices));
+
+        return empty($call[2]) ? $service : $result;
     }
 
     /**
