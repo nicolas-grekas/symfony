@@ -188,8 +188,10 @@ trait ResponseTrait
 
     private static function addRawHeaders(array $rawHeaders, array &$info, array &$headers): void
     {
+        $hasStatusLine = false;
         foreach ($rawHeaders as $h) {
             if (11 <= \strlen($h) && '/' === $h[4] && preg_match('#^HTTP/\d+(?:\.\d+)? ([12345]\d\d) .*#', $h, $m)) {
+                $hasStatusLine = true;
                 $headers = [];
                 $info['http_code'] = (int) $m[1];
             } elseif (2 === \count($m = explode(':', $h, 2))) {
@@ -199,6 +201,9 @@ trait ResponseTrait
             $info['raw_headers'][] = $h;
         }
 
+        if (!$hasStatusLine && !empty($info['http_code'])) {
+            array_unshift($info['raw_headers'], sprintf('HTTP/1.1 %s OK', $info['http_code']));
+        }
         if (!$info['http_code']) {
             throw new TransportException('Invalid or missing HTTP status line.');
         }

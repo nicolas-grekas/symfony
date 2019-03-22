@@ -49,10 +49,13 @@ class MockResponse implements ResponseInterface
         }
 
         $rawHeaders = [];
-
-        foreach ($info['raw_headers'] as $k => $v) {
-            foreach ((array) $v as $v) {
-                $rawHeaders[] = (\is_string($k) ? $k.': ' : '').$v;
+        foreach ($this->info['raw_headers'] as $k => $v) {
+            if (\is_array($v)) {
+                $rawHeaders[] = ucwords($k, ' -') . ': ' . implode(', ', $v);
+            } else {
+                foreach ((array) $v as $v) {
+                    $rawHeaders[] = (\is_string($k) ? $k . ': ' : '') . $v;
+                }
             }
         }
 
@@ -242,11 +245,11 @@ class MockResponse implements ResponseInterface
         $response->addRawHeaders($info['raw_headers'] ?? [], $response->info, $response->headers);
         $dlSize = (int) ($response->headers['content-length'][0] ?? 0);
 
-        $response->info = [
+        $response->info = $response->info + $info + [
             'start_time' => $response->info['start_time'],
             'user_data' => $response->info['user_data'],
             'http_code' => $response->info['http_code'],
-        ] + $info + $response->info;
+        ];
 
         if (isset($response->info['total_time'])) {
             $response->info['total_time'] = microtime(true) - $response->info['start_time'];
