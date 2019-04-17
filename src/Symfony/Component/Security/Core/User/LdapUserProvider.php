@@ -13,6 +13,7 @@ namespace Symfony\Component\Security\Core\User;
 
 use Symfony\Component\Ldap\Entry;
 use Symfony\Component\Ldap\Exception\ConnectionException;
+use Symfony\Component\Ldap\Exception\ExceptionInterface;
 use Symfony\Component\Ldap\LdapInterface;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
@@ -24,7 +25,7 @@ use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
  * @author Grégoire Pineau <lyrixx@lyrixx.info>
  * @author Charles Sarrazin <charles@sarraz.in>
  */
-class LdapUserProvider implements UserProviderInterface
+class LdapUserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {
     private $ldap;
     private $baseDn;
@@ -35,6 +36,7 @@ class LdapUserProvider implements UserProviderInterface
     private $defaultSearch;
     private $passwordAttribute;
     private $extraFields;
+    private $entry;
 
     public function __construct(LdapInterface $ldap, string $baseDn, string $searchDn = null, string $searchPassword = null, array $defaultRoles = [], string $uidKey = null, string $filter = null, string $passwordAttribute = null, array $extraFields = [])
     {
@@ -91,6 +93,11 @@ class LdapUserProvider implements UserProviderInterface
         } catch (InvalidArgumentException $e) {
         }
 
+        if (null !== $this->entry) {
+            // Keep $entry around when called from upgradePassword()
+            $this->entry = $entry;
+        }
+
         return $this->loadUser($username, $entry);
     }
 
@@ -112,6 +119,35 @@ class LdapUserProvider implements UserProviderInterface
     public function supportsClass($class)
     {
         return 'Symfony\Component\Security\Core\User\User' === $class;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function upgradePassword(UserInterface $user, string $newEncodedPassword): void
+    {
+        if (!$user instanceof User) {
+            throw new UnsupportedUserException(sprintf('Instances of "%s" are not supported.', \get_class($user)));
+        }
+
+        if (null === $this->passwordAttribute) {
+            return;
+        }
+
+        try {
+            // Tell loadUserByUsername() to keep the $entry around
+            $this->entry = true;
+
+            if ($user->isEqualTo($this->loadUserByUsername($user->getUsername())) && \is_object($this->entry)) {
+                $this->entry->setAttribute($this->passwordAttribute, [$newEncodedPassword]);
+                $this->ldap->getEntryManager()->update($this->entry);
+                $user->setPassword($newEncodedPassword);
+            }
+        } catch (ExceptionInterface $e) {
+            // ignore failed password upgrades
+        } finally {
+            $this->entry = null;
+        }
     }
 
     /**
