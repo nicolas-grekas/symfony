@@ -16,7 +16,7 @@ use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * The interface for all "guard" authenticators required to hook-in the password migration process.
+ * The interface for all "guard" authenticators to automatically hook-in the password migration process.
  *
  * @author Roland Franssen <franssen.roland@gmail.com>
  */
