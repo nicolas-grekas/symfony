@@ -118,7 +118,7 @@ class GuardAuthenticationProvider implements AuthenticationProviderInterface
         if (true !== $guardAuthenticator->checkCredentials($token->getCredentials(), $user)) {
             throw new BadCredentialsException(sprintf('Authentication failed because %s::checkCredentials() did not return true.', \get_class($guardAuthenticator)));
         }
-        if ($this->userProvider instanceof PasswordUpgraderInterface && $guardAuthenticator instanceof PasswordMigratingInterface && method_exists($this->passwordEncoder, 'needsRehash') && $this->passwordEncoder->needsRehash($user, $user->getPassword())) {
+        if ($this->userProvider instanceof PasswordUpgraderInterface && $guardAuthenticator instanceof PasswordMigratingInterface && method_exists($this->passwordEncoder, 'needsRehash') && $this->passwordEncoder->needsRehash($user)) {
             $guardAuthenticator->migratePassword($user, $token->getCredentials(), $this->userProvider, $this->passwordEncoder);
         }
         $this->userChecker->checkPostAuth($user);
