@@ -56,7 +56,7 @@ class BinaryFileResponseTest extends ResponseTestCase
     public function testGetContent()
     {
         $response = new BinaryFileResponse(__FILE__);
-        $this->assertFalse($response->getContent());
+        $this->assertNull($response->getContent());
     }
 
     public function testSetContentDispositionGeneratesSafeFallbackFilename()
@@ -107,7 +107,7 @@ class BinaryFileResponseTest extends ResponseTestCase
 
         $this->assertEquals(206, $response->getStatusCode());
         $this->assertEquals($responseRange, $response->headers->get('Content-Range'));
-        $this->assertSame($length, $response->headers->get('Content-Length'));
+        $this->assertSame((string) $length, $response->headers->get('Content-Length'));
     }
 
     /**

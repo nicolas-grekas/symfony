@@ -50,7 +50,7 @@ class LdapUserProvider extends BaseLdapUserProvider
     /**
      * Loads a user from an LDAP entry.
      *
-     * @return User
+     * @return User|UserInterface
      */
     protected function loadUser($username, Entry $entry)
     {
