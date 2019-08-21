@@ -499,6 +499,10 @@ class Request
         try {
             $content = $this->getContent();
         } catch (\LogicException $e) {
+            if (\PHP_VERSION_ID >= 70400) {
+                throw $e;
+            }
+
             return trigger_error($e, E_USER_ERROR);
         }
 

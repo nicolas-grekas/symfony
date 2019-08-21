@@ -113,7 +113,7 @@ class DebugClassLoader
             'read' => 'string',
             'write' => 'bool',
             'destroy' => 'bool',
-            'gc' => 'int',
+            'gc' => 'bool',
         ],
         'SessionIdInterface' => [
             'create_sid' => 'string',

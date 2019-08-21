@@ -25,12 +25,7 @@ env:
 
 matrix:
     include:
-        - php: 7.1
-          env: php_extra="7.2"
-        - php: 7.3
-          env: deps=high
         - php: 7.4snapshot
-          env: deps=low
     fast_finish: true
 
 cache:
@@ -75,14 +70,12 @@ before_install:
       cp .composer/* ~/.composer/
       export PHPUNIT=$(readlink -f ./phpunit)
       export PHPUNIT_X="$PHPUNIT --exclude-group tty,benchmark,intl-data"
-      export COMPOSER_UP='composer update --no-progress --no-suggest --ansi'
+      export COMPOSER_UP='composer update --no-progress --no-suggest --ansi --optimize-autoloader'
       export COMPONENTS=$(find src/Symfony -mindepth 2 -type f -name phpunit.xml.dist -printf '%h\n')
       find ~/.phpenv -name xdebug.ini -delete
 
-      if [[ $TRAVIS_PHP_VERSION = 7.4* && $deps ]]; then
-          export PHPUNIT_X="$PHPUNIT_X,issue-32995"
-      elif [[ $TRAVIS_PHP_VERSION = 7.4* ]]; then
-          export PHPUNIT_X="$PHPUNIT --group issue-32995"
+      if [[ $TRAVIS_PHP_VERSION = 7.4* ]]; then
+          export PHPUNIT_X="$PHPUNIT_X,issue-32995,legacy"
       fi
 
       nanoseconds () {
@@ -163,6 +156,7 @@ before_install:
     - |
       # Install extra PHP extensions
       for PHP in $TRAVIS_PHP_VERSION $php_extra; do
+          continue
           export PHP=$PHP
           phpenv global $PHP
           INI=~/.phpenv/versions/$PHP/etc/conf.d/travis.ini
@@ -270,6 +264,9 @@ install:
           ([[ $deps ]] && cd src/Symfony/Component/HttpFoundation; composer config platform.ext-mongodb 1.6.0; composer require --dev --no-update mongodb/mongodb)
           tfold 'composer update' $COMPOSER_UP
           tfold 'phpunit install' ./phpunit install
+
+          php .github/patch-types.php
+
           if [[ $deps = high ]]; then
               echo "$COMPONENTS" | parallel --gnu "tfold {} 'cd {} && $COMPOSER_UP && $PHPUNIT_X$LEGACY'"
           elif [[ $deps = low ]]; then
