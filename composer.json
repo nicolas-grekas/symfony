@@ -142,7 +142,6 @@
             "src/Symfony/Bridge/ProxyManager/Legacy/ProxiedMethodReturnExpression.php"
         ],
         "exclude-from-classmap": [
-            "**/Tests/"
         ]
     },
     "autoload-dev": {
