@@ -91,7 +91,7 @@ interface AuthenticatorInterface extends AuthenticationEntryPointInterface
      *
      * @param mixed $credentials
      *
-     * @return bool
+     * @return mixed true if the credentials are valid, anything else otherwise.
      *
      * @throws AuthenticationException
      */

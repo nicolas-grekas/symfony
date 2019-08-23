@@ -52,7 +52,7 @@ class UsernamePasswordFormAuthenticationListenerTest extends TestCase
         $authenticationManager
             ->expects($ok ? $this->once() : $this->never())
             ->method('authenticate')
-            ->willReturn(new Response())
+            ->willReturnArgument(0)
         ;
 
         $listener = new UsernamePasswordFormAuthenticationListener(
