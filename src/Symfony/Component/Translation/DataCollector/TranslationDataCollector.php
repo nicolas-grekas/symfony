@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
 use Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface;
 use Symfony\Component\Translation\DataCollectorTranslator;
+use Symfony\Component\VarDumper\Cloner\Data;
 
 /**
  * @author Abdellatif Ait boudad <a.aitboudad@gmail.com>
@@ -60,11 +61,11 @@ class TranslationDataCollector extends DataCollector implements LateDataCollecto
     }
 
     /**
-     * @return array
+     * @return Data
      */
     public function getMessages()
     {
-        return isset($this->data['messages']) ? $this->data['messages'] : [];
+        return isset($this->data['messages']) ? $this->data['messages'] : new Data([]);
     }
 
     /**

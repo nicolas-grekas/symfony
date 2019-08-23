@@ -264,9 +264,7 @@ class PhpExtractor extends AbstractFileExtractor implements ExtractorInterface
     }
 
     /**
-     * @param string|array $directory
-     *
-     * @return array
+     * {@inheritdoc}
      */
     protected function extractFromDirectory($directory)
     {
