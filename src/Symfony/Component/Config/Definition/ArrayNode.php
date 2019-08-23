@@ -48,7 +48,7 @@ class ArrayNode extends BaseNode implements PrototypeNodeInterface
      *
      * @param mixed $value
      *
-     * @return array The value with normalized keys
+     * @return mixed The value with normalized keys
      */
     protected function preNormalize($value)
     {
