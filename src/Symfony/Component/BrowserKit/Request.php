@@ -41,7 +41,7 @@ class Request
         $this->files = $files;
         $this->cookies = $cookies;
         $this->server = $server;
-        $this->content = $content;
+        $this->content = (string) $content;
     }
 
     /**

@@ -799,7 +799,7 @@ class Request
      * ("Client-Ip" for instance), configure it via the $trustedHeaderSet
      * argument of the Request::setTrustedProxies() method instead.
      *
-     * @return string The client IP address
+     * @return string|null The client IP address
      *
      * @see getClientIps()
      * @see https://wikipedia.org/wiki/X-Forwarded-For

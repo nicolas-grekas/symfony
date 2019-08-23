@@ -66,7 +66,7 @@ abstract class Kernel implements KernelInterface, RebootableInterface, Terminabl
      * @deprecated since Symfony 4.2
      */
     protected $name;
-    protected $startTime;
+    protected $startTime = -INF;
 
     private $projectDir;
     private $warmupDir;
@@ -204,7 +204,7 @@ abstract class Kernel implements KernelInterface, RebootableInterface, Terminabl
     /**
      * Gets a HTTP kernel from the container.
      *
-     * @return HttpKernel
+     * @return HttpKernelInterface
      */
     protected function getHttpKernel()
     {
