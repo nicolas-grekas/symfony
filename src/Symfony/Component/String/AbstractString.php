@@ -1,0 +1,549 @@
+<?php
+
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Symfony\Component\String;
+
+use Symfony\Component\String\Exception\ExceptionInterface;
+use Symfony\Component\String\Exception\InvalidArgumentException;
+
+/**
+ * Represents a string of abstract characters.
+ *
+ * Unicode defines 3 types of "characters" (bytes, code points and grapheme clusters).
+ * This class is the abstract type to use as a type-hint when the logic you want to
+ * implement doesn't care about the exact variant it deals with.
+ *
+ * @author Nicolas Grekas <p@tchwork.com>
+ * @author Hugo Hamon <hugohamon@neuf.fr>
+ *
+ * @throws ExceptionInterface
+ */
+abstract class AbstractString implements \JsonSerializable
+{
+    protected $string = '';
+    protected $ignoreCase = false;
+
+    abstract public function __construct(string $string = '');
+
+    /**
+     * @param string|string[] $needle
+     *
+     * @return static
+     */
+    public function after($needle, bool $includeNeedle = false): self
+    {
+        if (null === $i = $this->indexOf($needle)) {
+            $str = clone $this;
+            $str->string = '';
+
+            return $str;
+        }
+
+        if (!$includeNeedle) {
+            $str = clone $this;
+            $str->string = $needle;
+            $i += $str->length();
+        }
+
+        return $this->slice($i);
+    }
+
+    /**
+     * @param string|string[] $needle
+     *
+     * @return static
+     */
+    public function afterLast($needle, bool $includeNeedle = false): self
+    {
+        if (null === $i = $this->indexOfLast($needle)) {
+            $str = clone $this;
+            $str->string = '';
+
+            return $str;
+        }
+
+        if (!$includeNeedle) {
+            $str = clone $this;
+            $str->string = $needle;
+            $i += $str->length();
+        }
+
+        return $this->slice($i);
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function append(string ...$suffix): self;
+
+    /**
+     * @param string|string[] $needle
+     *
+     * @return static
+     */
+    public function before($needle, bool $includeNeedle = false): self
+    {
+        if (null === $i = $this->indexOf($needle)) {
+            $str = clone $this;
+            $str->string = '';
+
+            return $str;
+        }
+
+        if ($includeNeedle) {
+            $str = clone $this;
+            $str->string = $needle;
+            $i += $str->length();
+        }
+
+        return $this->slice(0, $i);
+    }
+
+    /**
+     * @param string|string[] $needle
+     *
+     * @return static
+     */
+    public function beforeLast($needle, bool $includeNeedle = false): self
+    {
+        if (null === $i = $this->indexOfLast($needle)) {
+            $str = clone $this;
+            $str->string = '';
+
+            return $str;
+        }
+
+        if ($includeNeedle) {
+            $str = clone $this;
+            $str->string = $needle;
+            $i += $str->length();
+        }
+
+        return $this->slice(0, $i);
+    }
+
+    /**
+     * @return static
+     */
+    public function camel(): self
+    {
+        $str = clone $this;
+        $str->string = lcfirst(str_replace(' ', '', ucwords(preg_replace('/[^a-zA-Z0-9\x7f-\xff]++/', ' ', $this->string))));
+
+        return $str;
+    }
+
+    /**
+     * @return static[]
+     */
+    abstract public function chunk(int $length = 1): array;
+
+    /**
+     * @param string|string[] $needle
+     */
+    public function contains($needle): bool
+    {
+        foreach ((array) $needle as $needle) {
+            if (null !== $this->indexOf((string) $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return static
+     */
+    public function collapseWhitespace(): self
+    {
+        $str = clone $this;
+        $str->string = trim(preg_replace('/(?:\s{2,}+|[^\S ])/', ' ', $str->string));
+
+        return $str;
+    }
+
+    /**
+     * @param string|string[] $suffix
+     */
+    public function endsWith($suffix): bool
+    {
+        foreach ((array) $suffix as $suffix) {
+            if ($this->endsWith((string) $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return static
+     */
+    public function ensureEnd(string $suffix): self
+    {
+        if (!$this->endsWith($suffix)) {
+            return $this->append($suffix);
+        }
+
+        $regex = '{(?:'.preg_quote($suffix).'){2,}$}';
+
+        return $this->replaceMatches($regex.($this->ignoreCase ? 'i' : ''), $suffix);
+    }
+
+    /**
+     * @return static
+     */
+    public function ensureStart(string $prefix): self
+    {
+        if (!$this->startsWith($prefix)) {
+            return $this->prepend($prefix);
+        }
+
+        $next = clone $this;
+        $next->ignoreCase = $this->ignoreCase;
+
+        do {
+            $str = clone $next;
+        } while ('' !== $next->string = $next->after($prefix)->string);
+
+        return $str;
+    }
+
+    /**
+     * @param string|string[] $string
+     */
+    public function equalsTo($string): bool
+    {
+        foreach ((array) $string as $string) {
+            if ($this->equalsTo((string) $string)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function folded(): self;
+
+    /**
+     * @return static
+     */
+    public function ignoreCase(): self
+    {
+        $str = clone $this;
+        $str->ignoreCase = true;
+
+        return $str;
+    }
+
+    /**
+     * @param string|string[] $needle
+     */
+    public function indexOf($needle, int $offset = 0): ?int
+    {
+        $i = \PHP_INT_MAX;
+
+        foreach ((array) $needle as $needle) {
+            $j = $this->indexOf((string) $needle, $offset);
+
+            if (null !== $j && $j < $i) {
+                $i = $j;
+            }
+        }
+
+        return \PHP_INT_MAX === $i ? null : $i;
+    }
+
+    /**
+     * @param string|string[] $needle
+     */
+    public function indexOfLast($needle, int $offset = 0): ?int
+    {
+        $i = null;
+
+        foreach ((array) $needle as $needle) {
+            $j = $this->indexOfLast((string) $needle, $offset);
+
+            if (null !== $j && $j > $i) {
+                $i = $offset = $j;
+            }
+        }
+
+        return $i;
+    }
+
+    public function isEmpty(): bool
+    {
+        return '' === $this->string;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function join(array $strings): self;
+
+    public function jsonSerialize(): string
+    {
+        return $this->string;
+    }
+
+    abstract public function length(): int;
+
+    /**
+     * @return static
+     */
+    abstract public function lower(): self;
+
+    /**
+     * Matches the string using a regular expression.
+     *
+     * Append the "g" modifier to get all occurrences matching the pattern in the string.
+     *
+     * @return array All matches in a multi-dimensional array ordered according to flags
+     */
+    abstract public function match(string $pattern, int $flags = 0, int $offset = 0): array;
+
+    /**
+     * @return static
+     */
+    abstract public function padBoth(int $length, string $padStr = ' '): self;
+
+    /**
+     * @return static
+     */
+    abstract public function padEnd(int $length, string $padStr = ' '): self;
+
+    /**
+     * @return static
+     */
+    abstract public function padStart(int $length, string $padStr = ' '): self;
+
+    /**
+     * @return static
+     */
+    abstract public function prepend(string ...$prefix): self;
+
+    /**
+     * @return static
+     */
+    public function repeat(int $multiplier): self
+    {
+        $str = clone $this;
+        $str->string = str_repeat($str->string, $multiplier < 0 ? 0 : $multiplier);
+
+        return $str;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function replace(string $from, string $to): self;
+
+    /**
+     * @param string|callable $to
+     *
+     * @return static
+     */
+    abstract public function replaceMatches(string $fromPattern, $to): self;
+
+    /**
+     * @return static
+     */
+    abstract public function slice(int $start = 0, int $length = null): self;
+
+    /**
+     * @return static
+     */
+    public function snake(): self
+    {
+        $str = $this->camel();
+        $str->string = strtolower(preg_replace(['/([A-Z]+)([A-Z][a-z])/', '/([a-z\d])([A-Z])/'], '\1_\2', $str->string));
+
+        return $str;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function splice(string $replacement, int $start = 0, int $length = null): self;
+
+    /**
+     * @return static[]
+     */
+    abstract public function split(string $delimiter, int $limit = null): array;
+
+    /**
+     * @param string|string[] $prefix
+     */
+    public function startsWith($prefix): bool
+    {
+        foreach ((array) $prefix as $prefix) {
+            if ($this->startsWith((string) $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function title(bool $allWords = false): self;
+
+    public function toBinary(string $toEncoding = null): BinaryString
+    {
+        $b = new BinaryString();
+
+        $toEncoding = \in_array($toEncoding, ['utf8', 'utf-8', 'UTF8'], true) ? 'UTF-8' : $toEncoding;
+
+        if (null === $toEncoding || $toEncoding === $fromEncoding = $this instanceof AbstractUnicodeString || preg_match('//u', $b->string) ? 'UTF-8' : 'Windows-1252') {
+            $b->string = $this->string;
+
+            return $b;
+        }
+
+        set_error_handler(static function ($t, $m) { throw new InvalidArgumentException($m); });
+
+        try {
+            try {
+                $b->string = mb_convert_encoding($this->string, $toEncoding, 'UTF-8');
+            } catch (InvalidArgumentException $e) {
+                if (!\function_exists('iconv')) {
+                    throw $e;
+                }
+
+                $b->string = iconv('UTF-8', $toEncoding, $this->string);
+            }
+        } finally {
+            restore_error_handler();
+        }
+
+        return $b;
+    }
+
+    public function toGrapheme(): GraphemeString
+    {
+        return new GraphemeString($this->string);
+    }
+
+    public function toUtf8(): Utf8String
+    {
+        return new Utf8String($this->string);
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function trim(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): self;
+
+    /**
+     * @return static
+     */
+    abstract public function trimEnd(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): self;
+
+    /**
+     * @return static
+     */
+    abstract public function trimStart(string $chars = " \t\n\r\0\x0B\x0C\u{A0}\u{FEFF}"): self;
+
+    /**
+     * @return static
+     */
+    public function truncate(int $length, string $ellipsis = ''): self
+    {
+        $stringLength = $this->length();
+
+        if ($stringLength <= $length) {
+            return clone $this;
+        }
+
+        $ellipsisLength = '' !== $ellipsis ? (new static($ellipsis))->length() : 0;
+
+        if ($length < $ellipsisLength) {
+            $ellipsisLength = 0;
+        }
+
+        $str = $this->slice(0, $length - $ellipsisLength);
+
+        return $ellipsisLength ? $str->trimEnd()->append($ellipsis) : $str;
+    }
+
+    /**
+     * @return static
+     */
+    abstract public function upper(): self;
+
+    abstract public function width(bool $ignoreAnsiDecoration = true): int;
+
+    /**
+     * @return static
+     */
+    public function wordwrap(int $width = 75, string $break = "\n", bool $cut = false): self
+    {
+        $lines = '' !== $break ? $this->split($break) : [clone $this];
+        $chars = [];
+        $mask = '';
+
+        if (1 === \count($lines) && '' === $lines[0]->string) {
+            return $lines[0];
+        }
+
+        foreach ($lines as $i => $line) {
+            if ($i) {
+                $chars[] = $break;
+                $mask .= '#';
+            }
+
+            foreach ($line->chunk() as $char) {
+                $chars[] = $char->string;
+                $mask .= ' ' === $char->string ? ' ' : '?';
+            }
+        }
+
+        $string = '';
+        $j = 0;
+        $b = $i = -1;
+        $mask = wordwrap($mask, $width, '#', $cut);
+
+        while (false !== $b = strpos($mask, '#', $b + 1)) {
+            for (++$i; $i < $b; ++$i) {
+                $string .= $chars[$j];
+                unset($chars[$j++]);
+            }
+
+            if ($break === $chars[$j] || ' ' === $chars[$j]) {
+                unset($chars[$j++]);
+            }
+
+            $string .= $break;
+        }
+
+        $str = clone $this;
+        $str->string = $string.implode('', $chars);
+
+        return $str;
+    }
+
+    public function __clone()
+    {
+        $this->ignoreCase = false;
+    }
+
+    public function __toString(): string
+    {
+        return $this->string;
+    }
+}
