@@ -13,6 +13,7 @@ namespace Symfony\Component\String;
 
 use Symfony\Component\String\Exception\ExceptionInterface;
 use Symfony\Component\String\Exception\InvalidArgumentException;
+use Symfony\Component\String\Exception\RuntimeException;
 
 /**
  * Represents a binary-safe string of bytes.
@@ -301,7 +302,7 @@ class BinaryString extends AbstractString
     public function splice(string $replacement, int $start = 0, int $length = null): parent
     {
         $str = clone $this;
-        $str = substr_replace($this->string, $replacement, $start, $length ?? \PHP_INT_MAX);
+        $str->string = substr_replace($this->string, $replacement, $start, $length ?? \PHP_INT_MAX);
 
         return $str;
     }

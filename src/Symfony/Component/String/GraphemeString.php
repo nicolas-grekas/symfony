@@ -179,7 +179,7 @@ class GraphemeString extends AbstractUnicodeString
     /**
      * @return static
      */
-    public function normalize(int $form = self::NFC): self
+    public function normalize(int $form = self::NFC): parent
     {
         if (\in_array($form, [self::NFD, self::NFKD])) {
             $this->ignoreCase = null;

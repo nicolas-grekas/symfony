@@ -13,6 +13,7 @@ namespace Symfony\Component\String;
 
 use Symfony\Component\String\Exception\ExceptionInterface;
 use Symfony\Component\String\Exception\InvalidArgumentException;
+use Symfony\Component\String\Exception\RuntimeException;
 
 /**
  * Represents a string of abstract Unicode characters.

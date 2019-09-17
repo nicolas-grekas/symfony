@@ -85,7 +85,7 @@ class Utf8String extends AbstractUnicodeString
         }
 
         if ($this->ignoreCase) {
-            return preg_match('{'.preg_quote($suffix).'$}iu');
+            return preg_match('{'.preg_quote($suffix).'$}iu', $this->string);
         }
 
         return \strlen($this->string) - \strlen($suffix) === strrpos($this->string, $suffix);
