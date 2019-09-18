@@ -13,6 +13,7 @@ namespace Symfony\Component\String;
 
 use Symfony\Component\String\Exception\ExceptionInterface;
 use Symfony\Component\String\Exception\InvalidArgumentException;
+use Symfony\Component\String\Exception\RuntimeException;
 
 /**
  * Represents a string of abstract characters.
@@ -46,7 +47,7 @@ abstract class AbstractString implements \JsonSerializable
     /**
      * Unwraps instances of AbstractString back to strings.
      *
-     * @return static[]|array
+     * @return string[]|array
      */
     public static function unwrap(array $values): array
     {
@@ -74,7 +75,7 @@ abstract class AbstractString implements \JsonSerializable
         foreach ($values as $k => $v) {
             ++$i;
 
-            if (\is_string($k) && '' !== $string && $k !== $j = (string) new static($k)) {
+            if (\is_string($k) && '' !== $k && $k !== $j = (string) new static($k)) {
                 $keys = $keys ?? array_keys($values);
                 array_splice($keys, $i, 1, [$j]);
             }
@@ -422,7 +423,7 @@ abstract class AbstractString implements \JsonSerializable
     abstract public function splice(string $replacement, int $start = 0, int $length = null): self;
 
     /**
-     * @return string[]
+     * @return static[]
      */
     public function split(string $delimiter, int $limit = null, int $flags = null): array
     {
