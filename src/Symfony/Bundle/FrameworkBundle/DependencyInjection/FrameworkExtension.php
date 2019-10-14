@@ -25,7 +25,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\FrameworkBundle\Routing\AnnotatedRouteControllerLoader;
 use Symfony\Bundle\FrameworkBundle\Routing\RedirectableUrlMatcher;
 use Symfony\Bundle\FrameworkBundle\Routing\RouteLoaderInterface;
-use Symfony\Bundle\FrameworkBundle\Secret\Storage\SecretStorageInterface;
 use Symfony\Bundle\FullStack;
 use Symfony\Component\Asset\PackageInterface;
 use Symfony\Component\BrowserKit\AbstractBrowser;
@@ -1446,7 +1445,7 @@ class FrameworkExtension extends Extension
     private function registerSecretsConfiguration(array $config, ContainerBuilder $container, XmlFileLoader $loader)
     {
         if (!$this->isConfigEnabled($container, $config)) {
-            $container->removeDefinition('console.command.secrets_add');
+            $container->removeDefinition('console.command.secrets_set');
             $container->removeDefinition('console.command.secrets_list');
             $container->removeDefinition('console.command.secrets_remove');
             $container->removeDefinition('console.command.secrets_generate_key');
@@ -1456,13 +1455,7 @@ class FrameworkExtension extends Extension
 
         $loader->load('secrets.xml');
 
-        $container->setAlias(SecretStorageInterface::class, new Alias('secrets.storage.cache', false));
-
-        $container->getDefinition('secrets.storage.files')->replaceArgument(0, $config['encrypted_secrets_dir']);
-        $container->getDefinition('secrets.encoder.sodium')->replaceArgument(0, $config['encryption_key']);
-
-        $container->registerForAutoconfiguration(SecretStorageInterface::class)
-            ->addTag('secret_storage');
+        $container->getDefinition('secrets.vault')->replaceArgument(0, $config['directory']);
     }
 
     private function registerSecurityCsrfConfiguration(array $config, ContainerBuilder $container, XmlFileLoader $loader)

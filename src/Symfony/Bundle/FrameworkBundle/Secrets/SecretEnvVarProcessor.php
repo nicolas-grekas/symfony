@@ -9,10 +9,8 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Bundle\FrameworkBundle\Secret;
+namespace Symfony\Bundle\FrameworkBundle\Secrets;
 
-use Symfony\Bundle\FrameworkBundle\Exception\SecretNotFoundException;
-use Symfony\Bundle\FrameworkBundle\Secret\Storage\SecretStorageInterface;
 use Symfony\Component\DependencyInjection\EnvVarProcessorInterface;
 use Symfony\Component\DependencyInjection\Exception\EnvNotFoundException;
 
@@ -21,11 +19,11 @@ use Symfony\Component\DependencyInjection\Exception\EnvNotFoundException;
  */
 class SecretEnvVarProcessor implements EnvVarProcessorInterface
 {
-    private $secretStorage;
+    private $vault;
 
-    public function __construct(SecretStorageInterface $secretStorage)
+    public function __construct(SodiumVault $vault)
     {
-        $this->secretStorage = $secretStorage;
+        $this->vault = $vault;
     }
 
     /**
@@ -43,10 +41,10 @@ class SecretEnvVarProcessor implements EnvVarProcessorInterface
      */
     public function getEnv($prefix, $name, \Closure $getEnv)
     {
-        try {
-            return $this->secretStorage->getSecret($name);
-        } catch (SecretNotFoundException $e) {
-            throw new EnvNotFoundException($e->getMessage(), 0, $e);
+        if (null !== $secret = $this->vault->reveal($name)) {
+            return $secret;
         }
+
+        throw new EnvNotFoundException(sprintf('Secret "%s" not found or decryption key is missing.', $name));
     }
 }

@@ -11,8 +11,7 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Command;
 
-use Symfony\Bundle\FrameworkBundle\Exception\EncryptionKeyNotFoundException;
-use Symfony\Bundle\FrameworkBundle\Secret\Storage\MutableSecretStorageInterface;
+use Symfony\Bundle\FrameworkBundle\Secrets\SodiumVault;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -23,15 +22,15 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * @author Tobias Schultze <http://tobion.de>
  * @author Jérémy Derussé <jeremy@derusse.com>
  */
-final class SecretsAddCommand extends Command
+final class SecretsSetCommand extends Command
 {
-    protected static $defaultName = 'secrets:add';
+    protected static $defaultName = 'secrets:set';
 
-    private $secretsStorage;
+    private $vault;
 
-    public function __construct(MutableSecretStorageInterface $secretsStorage)
+    public function __construct(SodiumVault $vault)
     {
-        $this->secretsStorage = $secretsStorage;
+        $this->vault = $vault;
 
         parent::__construct();
     }
@@ -42,7 +41,7 @@ final class SecretsAddCommand extends Command
             ->setDefinition([
                 new InputArgument('name', InputArgument::REQUIRED, 'The name of the secret'),
             ])
-            ->setDescription('Adds a secret in the storage.')
+            ->setDescription('Sets a secret in the storage.')
             ->setHelp(<<<'EOF'
 The <info>%command.name%</info> command stores a secret.
 
@@ -52,19 +51,22 @@ EOF
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
 
         $name = $input->getArgument('name');
-        $secret = $io->askHidden('Value of the secret');
+        $secret = $io->askHidden('Please type the secret value 🤫');
 
-        try {
-            $this->secretsStorage->setSecret($name, $secret);
-        } catch (EncryptionKeyNotFoundException $e) {
-            throw new \LogicException(sprintf('No encryption keys found. You should call the "%s" command.', SecretsGenerateKeyCommand::getDefaultName()));
+        if ($this->vault->generateKeys()) {
+            $io->success('New encryption keys have been generated.');
+            $io->caution('DO NOT COMMIT THE DECRYPTION KEY FOR THE PROD ENVIRONMENT⚠️');
         }
 
+        $this->vault->seal($name, $secret);
+
         $io->success('Secret was successfully stored.');
+
+        return 0;
     }
 }

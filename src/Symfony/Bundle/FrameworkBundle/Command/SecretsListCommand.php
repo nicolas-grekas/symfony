@@ -11,8 +11,7 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Command;
 
-use Symfony\Bundle\FrameworkBundle\Exception\EncryptionKeyNotFoundException;
-use Symfony\Bundle\FrameworkBundle\Secret\Storage\SecretStorageInterface;
+use Symfony\Bundle\FrameworkBundle\Secrets\SodiumVault;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -27,11 +26,11 @@ final class SecretsListCommand extends Command
 {
     protected static $defaultName = 'debug:secrets';
 
-    private $secretStorage;
+    private $vault;
 
-    public function __construct(SecretStorageInterface $secretStorage)
+    public function __construct(SodiumVault $vault)
     {
-        $this->secretStorage = $secretStorage;
+        $this->vault = $vault;
 
         parent::__construct();
     }
@@ -48,7 +47,7 @@ The <info>%command.name%</info> command list all stored secrets.
 
     %command.full_name%
 
-When the the option <info>--reveal</info> is provided, the decrypted secrets are also displayed. 
+When the option <info>--reveal</info> is provided, the decrypted secrets are also displayed.
 
     %command.full_name% --reveal
 EOF
@@ -60,33 +59,26 @@ EOF
             ->addOption('reveal', 'r', InputOption::VALUE_NONE, 'Display decrypted values alongside names');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $reveal = $input->getOption('reveal');
         $io = new SymfonyStyle($input, $output);
 
-        try {
-            $secrets = $this->secretStorage->listSecrets($reveal);
-        } catch (EncryptionKeyNotFoundException $e) {
-            throw new \LogicException(sprintf('Unable to decrypt secrets, the encryption key "%s" is missing.', $e->getKeyLocation()));
+        if (!$reveal = $input->getOption('reveal')) {
+            $io->comment(sprintf('To reveal the secrets run <info>php %s %s --reveal</info>', $_SERVER['PHP_SELF'], $this->getName()));
         }
 
-        if ($reveal) {
-            $rows = [];
-            foreach ($secrets as $name => $value) {
-                $rows[] = [$name, $value];
-            }
-            $io->table(['name', 'secret'], $rows);
-
-            return;
-        }
+        $secrets = $this->vault->list($reveal);
 
         $rows = [];
-        foreach ($secrets as $name => $_) {
-            $rows[] = [$name];
+        foreach ($secrets as $name => $value) {
+            $rows[] = [$name, $value ?? '********'];
+        }
+        $io->table(['name', 'secret'], $rows);
+
+        if ($reveal && $secrets && null === $value) {
+            $io->comment('Secrets could not be revealed as not decryption key has been found.');
         }
 
-        $io->comment(sprintf('To reveal the values of the secrets use <info>php %s %s --reveal</info>', $_SERVER['PHP_SELF'], $this->getName()));
-        $io->table(['name'], $rows);
+        return 0;
     }
 }

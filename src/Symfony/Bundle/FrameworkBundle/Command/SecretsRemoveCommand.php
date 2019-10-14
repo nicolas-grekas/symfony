@@ -11,7 +11,7 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Command;
 
-use Symfony\Bundle\FrameworkBundle\Secret\Storage\MutableSecretStorageInterface;
+use Symfony\Bundle\FrameworkBundle\Secrets\SodiumVault;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -25,11 +25,11 @@ final class SecretsRemoveCommand extends Command
 {
     protected static $defaultName = 'secrets:remove';
 
-    private $secretsStorage;
+    private $vault;
 
-    public function __construct(MutableSecretStorageInterface $secretsStorage)
+    public function __construct(SodiumVault $vault)
     {
-        $this->secretsStorage = $secretsStorage;
+        $this->vault = $vault;
 
         parent::__construct();
     }
@@ -50,12 +50,16 @@ EOF
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
 
-        $this->secretsStorage->removeSecret($input->getArgument('name'));
+        if ($this->vault->remove($input->getArgument('name'))) {
+            $io->success('Secret was successfully removed.');
+        } else {
+            $io->text('No secret was found with that name.');
+        }
 
-        $io->success('Secret was successfully removed.');
+        return 0;
     }
 }
