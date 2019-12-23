@@ -27,6 +27,25 @@ class PrivateNetworkOnlyHttpClient implements HttpClientInterface
 {
     use HttpClientTrait;
 
+    const IPV4_PRIVATE_SUBNETS = [
+        '0.0.0.0/8',
+        '169.254.0.0/16',
+        '127.0.0.0/8',
+        '240.0.0.0/4',
+        '10.0.0.0/8',
+        '172.16.0.0/12',
+        '192.168.0.0/16',
+    ];
+
+    const IPV6_PRIVATE_SUBNETS = [
+        '::1/128',
+        '::/128',
+        '::ffff:0:0/96',
+        'fe80::/10',
+        'fc00::/8',
+        'fd00::/8',
+    ];
+
     /**
      * @var HttpClientInterface
      */
@@ -91,7 +110,7 @@ class PrivateNetworkOnlyHttpClient implements HttpClientInterface
         $options['on_progress'] = function (int $dlNow, int $dlSize, array $info) use ($onProgress, $blacklist, &$lastPrimaryIp): void {
             if ($info['primary_ip'] !== $lastPrimaryIp) {
                 if ($info['primary_ip'] === filter_var($info['primary_ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                    if (!IpUtils::checkIp($info['primary_ip'], ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'])) {
+                    if (!IpUtils::checkIp($info['primary_ip'], self::IPV4_PRIVATE_SUBNETS)) {
                         throw new TransportException(sprintf('IPv4 "%s" is on public network.', $info['primary_ip']));
                     }
 
@@ -99,7 +118,7 @@ class PrivateNetworkOnlyHttpClient implements HttpClientInterface
                         throw new TransportException(sprintf('IPv4 "%s" is blacklisted.', $info['primary_ip']));
                     }
                 } else if ($info['primary_ip'] === filter_var($info['primary_ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-                    if (!IpUtils::checkIp($info['primary_ip'], ['::1/128', 'fc00::/8', 'fd00::/8'])) {
+                    if (!IpUtils::checkIp($info['primary_ip'], self::IPV6_PRIVATE_SUBNETS)) {
                         throw new TransportException(sprintf('IPv6 "%s" is on public network.', $info['primary_ip']));
                     }
 
