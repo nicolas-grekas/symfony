@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\DependencyInjection\Compiler;
 
+use Symfony\Component\DependencyInjection\Attribute\TaggedItem;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -24,6 +25,13 @@ use Symfony\Component\DependencyInjection\Exception\RuntimeException;
  */
 class ResolveInstanceofConditionalsPass implements CompilerPassInterface
 {
+    private $ignoreAttributesTag;
+
+    public function __construct(string $ignoreAttributesTag = 'container.ignore_attributes')
+    {
+        $this->ignoreAttributesTag = $ignoreAttributesTag;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -72,6 +80,14 @@ class ResolveInstanceofConditionalsPass implements CompilerPassInterface
         $reflectionClass = null;
         $parent = $definition instanceof ChildDefinition ? $definition->getParent() : null;
 
+        $typedTaggedItems = [];
+        if (80000 <= \PHP_VERSION_ID && $definition->isAutoconfigured() && !$definition->hasTag($this->ignoreAttributesTag) && $reflectionClass = $container->getReflectionClass($class, false) ?: false) {
+            foreach ($reflectionClass->getAttributes(TaggedItem::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                $taggedItem = $attribute->newInstance();
+                $typedTaggedItems += [$taggedItem->type ?? '' => $taggedItem];
+            }
+        }
+
         foreach ($conditionals as $interface => $instanceofDefs) {
             if ($interface !== $class && !(null === $reflectionClass ? $reflectionClass = ($container->getReflectionClass($class, false) ?: false) : $reflectionClass)) {
                 continue;
@@ -87,7 +103,22 @@ class ResolveInstanceofConditionalsPass implements CompilerPassInterface
                 $instanceofDef->setAbstract(true)->setParent($parent ?: '.abstract.instanceof.'.$id);
                 $parent = '.instanceof.'.$interface.'.'.$key.'.'.$id;
                 $container->setDefinition($parent, $instanceofDef);
-                $instanceofTags[] = $instanceofDef->getTags();
+
+                $tags = $instanceofDef->getTags();
+                if ($tags && $taggedItem = $typedTaggedItems[$interface] ?? $typedTaggedItems[''] ?? null) {
+                    foreach ($tags as $tag => $attributes) {
+                        foreach ($attributes as $i => $attribute) {
+                            if (null !== $taggedItem->index) {
+                                $tags[$tag][$i] += ['name' => $taggedItem->index];
+                            }
+                            if (null !== $taggedItem->priority) {
+                                $tags[$tag][$i] += ['priority' => $taggedItem->priority];
+                            }
+                        }
+                    }
+                }
+
+                $instanceofTags[] = $tags;
                 $instanceofBindings = $instanceofDef->getBindings() + $instanceofBindings;
 
                 foreach ($instanceofDef->getMethodCalls() as $methodCall) {
