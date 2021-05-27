@@ -41,14 +41,11 @@ class YamlFileLoader extends FileLoader
     /**
      * Loads a Yaml file.
      *
-     * @param string      $file A Yaml file path
-     * @param string|null $type The resource type
-     *
      * @return RouteCollection A RouteCollection instance
      *
      * @throws \InvalidArgumentException When a route can't be parsed because YAML is invalid
      */
-    public function load($file, string $type = null)
+    public function load(mixed $file, string $type = null)
     {
         $path = $this->locator->locate($file);
 
@@ -117,7 +114,7 @@ class YamlFileLoader extends FileLoader
     /**
      * {@inheritdoc}
      */
-    public function supports($resource, string $type = null)
+    public function supports(mixed $resource, string $type = null)
     {
         return \is_string($resource) && \in_array(pathinfo($resource, \PATHINFO_EXTENSION), ['yml', 'yaml'], true) && (!$type || 'yaml' === $type);
     }
@@ -253,7 +250,7 @@ class YamlFileLoader extends FileLoader
      * @throws \InvalidArgumentException If one of the provided config keys is not supported,
      *                                   something is missing or the combination is nonsense
      */
-    protected function validate($config, string $name, string $path)
+    protected function validate(array $config, string $name, string $path)
     {
         if (!\is_array($config)) {
             throw new \InvalidArgumentException(sprintf('The definition of "%s" in "%s" must be a YAML array.', $name, $path));

@@ -59,7 +59,7 @@ class AccessDecisionManager implements AccessDecisionManagerInterface
      *
      * {@inheritdoc}
      */
-    public function decide(TokenInterface $token, array $attributes, $object = null/*, bool $allowMultipleAttributes = false*/)
+    public function decide(TokenInterface $token, array $attributes, object $object = null/*, bool $allowMultipleAttributes = false*/)
     {
         $allowMultipleAttributes = 3 < \func_num_args() && func_get_arg(3);
 
@@ -77,7 +77,7 @@ class AccessDecisionManager implements AccessDecisionManagerInterface
      * If all voters abstained from voting, the decision will be based on the
      * allowIfAllAbstainDecisions property value (defaults to false).
      */
-    private function decideAffirmative(TokenInterface $token, array $attributes, $object = null): bool
+    private function decideAffirmative(TokenInterface $token, array $attributes, object $object = null): bool
     {
         $deny = 0;
         foreach ($this->voters as $voter) {
@@ -115,7 +115,7 @@ class AccessDecisionManager implements AccessDecisionManagerInterface
      * If all voters abstained from voting, the decision will be based on the
      * allowIfAllAbstainDecisions property value (defaults to false).
      */
-    private function decideConsensus(TokenInterface $token, array $attributes, $object = null): bool
+    private function decideConsensus(TokenInterface $token, array $attributes, object $object = null): bool
     {
         $grant = 0;
         $deny = 0;
@@ -152,7 +152,7 @@ class AccessDecisionManager implements AccessDecisionManagerInterface
      * If all voters abstained from voting, the decision will be based on the
      * allowIfAllAbstainDecisions property value (defaults to false).
      */
-    private function decideUnanimous(TokenInterface $token, array $attributes, $object = null): bool
+    private function decideUnanimous(TokenInterface $token, array $attributes, object $object = null): bool
     {
         $grant = 0;
         foreach ($this->voters as $voter) {
@@ -186,7 +186,7 @@ class AccessDecisionManager implements AccessDecisionManagerInterface
      * If all voters abstained from voting, the decision will be based on the
      * allowIfAllAbstainDecisions property value (defaults to false).
      */
-    private function decidePriority(TokenInterface $token, array $attributes, $object = null)
+    private function decidePriority(TokenInterface $token, array $attributes, object $object = null)
     {
         foreach ($this->voters as $voter) {
             $result = $voter->vote($token, $object, $attributes);

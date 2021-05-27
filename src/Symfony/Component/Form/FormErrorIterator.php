@@ -140,11 +140,9 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
     /**
      * Returns whether a position exists in the iterator.
      *
-     * @param int $position The position
-     *
      * @return bool Whether that position exists
      */
-    public function offsetExists($position)
+    public function offsetExists(int $position)
     {
         return isset($this->errors[$position]);
     }
@@ -152,13 +150,11 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
     /**
      * Returns the element at a position in the iterator.
      *
-     * @param int $position The position
-     *
      * @return FormError|FormErrorIterator The element at the given position
      *
      * @throws OutOfBoundsException If the given position does not exist
      */
-    public function offsetGet($position)
+    public function offsetGet(int $position)
     {
         if (!isset($this->errors[$position])) {
             throw new OutOfBoundsException('The offset '.$position.' does not exist.');
@@ -172,7 +168,7 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
      *
      * @throws BadMethodCallException
      */
-    public function offsetSet($position, $value)
+    public function offsetSet(int $position, mixed $value)
     {
         throw new BadMethodCallException('The iterator doesn\'t support modification of elements.');
     }
@@ -182,7 +178,7 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
      *
      * @throws BadMethodCallException
      */
-    public function offsetUnset($position)
+    public function offsetUnset(int $position)
     {
         throw new BadMethodCallException('The iterator doesn\'t support modification of elements.');
     }
@@ -231,11 +227,9 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
     /**
      * Sets the position of the iterator.
      *
-     * @param int $position The new position
-     *
      * @throws OutOfBoundsException If the position is invalid
      */
-    public function seek($position)
+    public function seek(int $position)
     {
         if (!isset($this->errors[$position])) {
             throw new OutOfBoundsException('The offset '.$position.' does not exist.');
@@ -255,7 +249,7 @@ class FormErrorIterator implements \RecursiveIterator, \SeekableIterator, \Array
      *
      * @return static new instance which contains only specific errors
      */
-    public function findByCodes($codes)
+    public function findByCodes(string|array $codes)
     {
         $codes = (array) $codes;
         $errors = [];

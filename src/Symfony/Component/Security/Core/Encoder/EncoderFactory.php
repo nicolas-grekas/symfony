@@ -38,7 +38,7 @@ class EncoderFactory implements EncoderFactoryInterface
     /**
      * {@inheritdoc}
      */
-    public function getEncoder($user)
+    public function getEncoder(UserInterface|string $user)
     {
         $encoderKey = null;
 

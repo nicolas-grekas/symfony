@@ -31,7 +31,7 @@ class DockBlockFallback
         return $this->pub;
     }
 
-    public function setPub($pub)
+    public function setPub(string $pub)
     {
         $this->pub = $pub;
     }
@@ -44,7 +44,7 @@ class DockBlockFallback
         return $this->protAcc;
     }
 
-    public function setProt($protAcc)
+    public function setProt(int $protAcc)
     {
         $this->protAcc = $protAcc;
     }
@@ -54,10 +54,7 @@ class DockBlockFallback
         return $this->protMut;
     }
 
-    /**
-     * @param bool $protMut
-     */
-    public function setProtMut($protMut)
+    public function setProtMut(bool $protMut)
     {
         $this->protMut = $protMut;
     }

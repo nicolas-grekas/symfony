@@ -116,7 +116,7 @@ abstract class Input implements InputInterface, StreamableInputInterface
     /**
      * {@inheritdoc}
      */
-    public function setArgument(string $name, $value)
+    public function setArgument(string $name, string|array|null $value)
     {
         if (!$this->definition->hasArgument($name)) {
             throw new InvalidArgumentException(sprintf('The "%s" argument does not exist.', $name));
@@ -128,7 +128,7 @@ abstract class Input implements InputInterface, StreamableInputInterface
     /**
      * {@inheritdoc}
      */
-    public function hasArgument($name)
+    public function hasArgument(string|int $name)
     {
         return $this->definition->hasArgument($name);
     }
@@ -156,7 +156,7 @@ abstract class Input implements InputInterface, StreamableInputInterface
     /**
      * {@inheritdoc}
      */
-    public function setOption(string $name, $value)
+    public function setOption(string $name, string|array|bool|null $value)
     {
         if (!$this->definition->hasOption($name)) {
             throw new InvalidArgumentException(sprintf('The "%s" option does not exist.', $name));

@@ -242,11 +242,9 @@ class FormValidator extends ConstraintValidator
     /**
      * Post-processes the validation groups option for a given form.
      *
-     * @param string|GroupSequence|array<string|GroupSequence>|callable $groups The validation groups
-     *
      * @return GroupSequence|array<string|GroupSequence> The validation groups
      */
-    private static function resolveValidationGroups($groups, FormInterface $form)
+    private static function resolveValidationGroups(string|GroupSequence|array|callable $groups, FormInterface $form): GroupSequence|array
     {
         if (!\is_string($groups) && \is_callable($groups)) {
             $groups = $groups($form);
@@ -259,7 +257,7 @@ class FormValidator extends ConstraintValidator
         return (array) $groups;
     }
 
-    private static function getConstraintsInGroups($constraints, $group)
+    private static function getConstraintsInGroups(array $constraints, string $group): array
     {
         return array_filter($constraints, static function (Constraint $constraint) use ($group) {
             return \in_array($group, $constraint->groups, true);

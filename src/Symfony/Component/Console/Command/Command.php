@@ -360,11 +360,9 @@ class Command
     /**
      * Sets an array of argument and option instances.
      *
-     * @param array|InputDefinition $definition An array of argument and option instances or a definition instance
-     *
      * @return $this
      */
-    public function setDefinition($definition)
+    public function setDefinition(array|InputDefinition $definition)
     {
         if ($definition instanceof InputDefinition) {
             $this->definition = $definition;
@@ -416,7 +414,7 @@ class Command
      *
      * @return $this
      */
-    public function addArgument(string $name, int $mode = null, string $description = '', $default = null)
+    public function addArgument(string $name, int $mode = null, string $description = '', string|array|null $default = null)
     {
         $this->definition->addArgument(new InputArgument($name, $mode, $description, $default));
         if (null !== $this->fullDefinition) {
@@ -437,7 +435,7 @@ class Command
      *
      * @return $this
      */
-    public function addOption(string $name, $shortcut = null, int $mode = null, string $description = '', $default = null)
+    public function addOption(string $name, $shortcut = null, int $mode = null, string $description = '', string|array|bool|null $default = null)
     {
         $this->definition->addOption(new InputOption($name, $shortcut, $mode, $description, $default));
         if (null !== $this->fullDefinition) {

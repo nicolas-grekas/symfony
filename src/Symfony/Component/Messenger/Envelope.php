@@ -24,7 +24,6 @@ final class Envelope
     private $message;
 
     /**
-     * @param object           $message
      * @param StampInterface[] $stamps
      */
     public function __construct($message, array $stamps = [])
@@ -42,10 +41,9 @@ final class Envelope
     /**
      * Makes sure the message is in an Envelope and adds the given stamps.
      *
-     * @param object|Envelope  $message
      * @param StampInterface[] $stamps
      */
-    public static function wrap($message, array $stamps = []): self
+    public static function wrap(object $message, array $stamps = []): self
     {
         $envelope = $message instanceof self ? $message : new self($message);
 

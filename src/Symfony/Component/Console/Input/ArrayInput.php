@@ -53,7 +53,7 @@ class ArrayInput extends Input
     /**
      * {@inheritdoc}
      */
-    public function hasParameterOption($values, bool $onlyParams = false)
+    public function hasParameterOption(string|array $values, bool $onlyParams = false)
     {
         $values = (array) $values;
 
@@ -77,7 +77,7 @@ class ArrayInput extends Input
     /**
      * {@inheritdoc}
      */
-    public function getParameterOption($values, $default = false, bool $onlyParams = false)
+    public function getParameterOption(string|array $values, $default = false, bool $onlyParams = false)
     {
         $values = (array) $values;
 
@@ -148,7 +148,7 @@ class ArrayInput extends Input
      *
      * @throws InvalidOptionException When option given doesn't exist
      */
-    private function addShortOption(string $shortcut, $value)
+    private function addShortOption(string $shortcut, ?string $value)
     {
         if (!$this->definition->hasShortcut($shortcut)) {
             throw new InvalidOptionException(sprintf('The "-%s" option does not exist.', $shortcut));
@@ -163,7 +163,7 @@ class ArrayInput extends Input
      * @throws InvalidOptionException When option given doesn't exist
      * @throws InvalidOptionException When a required value is missing
      */
-    private function addLongOption(string $name, $value)
+    private function addLongOption(string $name, ?string $value)
     {
         if (!$this->definition->hasOption($name)) {
             if (!$this->definition->hasNegation($name)) {
@@ -199,7 +199,7 @@ class ArrayInput extends Input
      *
      * @throws InvalidArgumentException When argument given doesn't exist
      */
-    private function addArgument($name, $value)
+    private function addArgument(string|int $name, $value)
     {
         if (!$this->definition->hasArgument($name)) {
             throw new InvalidArgumentException(sprintf('The "%s" argument does not exist.', $name));

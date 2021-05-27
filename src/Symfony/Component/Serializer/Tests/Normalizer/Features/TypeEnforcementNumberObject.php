@@ -9,7 +9,7 @@ class TypeEnforcementNumberObject
      */
     public $number;
 
-    public function setNumber($number)
+    public function setNumber(float $number)
     {
         $this->number = $number;
     }

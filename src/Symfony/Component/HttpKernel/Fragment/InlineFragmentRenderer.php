@@ -43,7 +43,7 @@ class InlineFragmentRenderer extends RoutableFragmentRenderer
      *
      *  * alt: an alternative URI to render in case of an error
      */
-    public function render($uri, Request $request, array $options = [])
+    public function render(string|ControllerReference $uri, Request $request, array $options = [])
     {
         $reference = null;
         if ($uri instanceof ControllerReference) {

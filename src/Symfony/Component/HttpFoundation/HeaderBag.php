@@ -123,10 +123,9 @@ class HeaderBag implements \IteratorAggregate, \Countable
     /**
      * Sets a header by name.
      *
-     * @param string|string[] $values  The value or an array of values
-     * @param bool            $replace Whether to replace the actual value or not (true by default)
+     * @param bool $replace Whether to replace the actual value or not (true by default)
      */
-    public function set(string $key, $values, bool $replace = true)
+    public function set(string $key, string|array $values, bool $replace = true)
     {
         $key = strtr($key, self::UPPER, self::LOWER);
 
@@ -192,7 +191,7 @@ class HeaderBag implements \IteratorAggregate, \Countable
      *
      * @throws \RuntimeException When the HTTP header is not parseable
      */
-    public function getDate(string $key, \DateTime $default = null)
+    public function getDate(string $key, \DateTimeInterface $default = null)
     {
         if (null === $value = $this->get($key)) {
             return $default;
@@ -207,10 +206,8 @@ class HeaderBag implements \IteratorAggregate, \Countable
 
     /**
      * Adds a custom Cache-Control directive.
-     *
-     * @param mixed $value The Cache-Control directive value
      */
-    public function addCacheControlDirective(string $key, $value = true)
+    public function addCacheControlDirective(string $key, bool|string $value = true)
     {
         $this->cacheControl[$key] = $value;
 
@@ -224,17 +221,17 @@ class HeaderBag implements \IteratorAggregate, \Countable
      */
     public function hasCacheControlDirective(string $key)
     {
-        return \array_key_exists($key, $this->cacheControl);
+        return isset($this->cacheControl[$key]);
     }
 
     /**
      * Returns a Cache-Control directive value by name.
      *
-     * @return mixed The directive value if defined, null otherwise
+     * @return bool|string|null The directive value if defined, null otherwise
      */
     public function getCacheControlDirective(string $key)
     {
-        return \array_key_exists($key, $this->cacheControl) ? $this->cacheControl[$key] : null;
+        return $this->cacheControl[$key] ?? null;
     }
 
     /**

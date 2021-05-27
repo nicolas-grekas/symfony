@@ -85,31 +85,25 @@ final class Headers
     }
 
     /**
-     * @param Address|string $address
-     *
      * @return $this
      */
-    public function addMailboxHeader(string $name, $address): self
+    public function addMailboxHeader(string $name, Address|string $address): self
     {
         return $this->add(new MailboxHeader($name, Address::create($address)));
     }
 
     /**
-     * @param string|array $ids
-     *
      * @return $this
      */
-    public function addIdHeader(string $name, $ids): self
+    public function addIdHeader(string $name, string|array $ids): self
     {
         return $this->add(new IdentificationHeader($name, $ids));
     }
 
     /**
-     * @param Address|string $path
-     *
      * @return $this
      */
-    public function addPathHeader(string $name, $path): self
+    public function addPathHeader(string $name, Address|string $path): self
     {
         return $this->add(new PathHeader($name, $path instanceof Address ? $path : new Address($path)));
     }
@@ -254,7 +248,7 @@ final class Headers
         return $arr;
     }
 
-    public function getHeaderBody($name)
+    public function getHeaderBody(string $name)
     {
         return $this->has($name) ? $this->get($name)->getBody() : null;
     }
@@ -288,7 +282,7 @@ final class Headers
     /**
      * @internal
      */
-    public function setHeaderParameter(string $name, string $parameter, $value): void
+    public function setHeaderParameter(string $name, string $parameter, ?string $value): void
     {
         if (!$this->has($name)) {
             throw new LogicException(sprintf('Unable to set parameter "%s" on header "%s" as the header is not defined.', $parameter, $name));

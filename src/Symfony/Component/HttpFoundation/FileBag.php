@@ -43,7 +43,7 @@ class FileBag extends ParameterBag
     /**
      * {@inheritdoc}
      */
-    public function set(string $key, $value)
+    public function set(string $key, mixed $value)
     {
         if (!\is_array($value) && !$value instanceof UploadedFile) {
             throw new \InvalidArgumentException('An uploaded file must be an array or an instance of UploadedFile.');
@@ -69,7 +69,7 @@ class FileBag extends ParameterBag
      *
      * @return UploadedFile[]|UploadedFile|null A (multi-dimensional) array of UploadedFile instances
      */
-    protected function convertFileInformation($file)
+    protected function convertFileInformation(array|UploadedFile $file)
     {
         if ($file instanceof UploadedFile) {
             return $file;
@@ -109,11 +109,10 @@ class FileBag extends ParameterBag
      * It's safe to pass an already converted array, in which case this method
      * just returns the original array unmodified.
      *
-     * @param array $data
      *
      * @return array
      */
-    protected function fixPhpFilesArray($data)
+    protected function fixPhpFilesArray(array $data)
     {
         $keys = array_keys($data);
         sort($keys);

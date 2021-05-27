@@ -135,7 +135,7 @@ class PhpExtractor extends AbstractFileExtractor implements ExtractorInterface
     /**
      * {@inheritdoc}
      */
-    public function extract($resource, MessageCatalogue $catalog)
+    public function extract(string|iterable $resource, MessageCatalogue $catalog)
     {
         $files = $this->extractFiles($resource);
         foreach ($files as $file) {
@@ -327,7 +327,7 @@ class PhpExtractor extends AbstractFileExtractor implements ExtractorInterface
     /**
      * {@inheritdoc}
      */
-    protected function extractFromDirectory($directory)
+    protected function extractFromDirectory(string|iterable $directory)
     {
         $finder = new Finder();
 

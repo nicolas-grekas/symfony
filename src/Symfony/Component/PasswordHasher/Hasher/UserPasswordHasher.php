@@ -31,10 +31,7 @@ class UserPasswordHasher implements UserPasswordHasherInterface
         $this->hasherFactory = $hasherFactory;
     }
 
-    /**
-     * @param PasswordAuthenticatedUserInterface $user
-     */
-    public function hashPassword($user, string $plainPassword): string
+    public function hashPassword(PasswordAuthenticatedUserInterface $user, string $plainPassword): string
     {
         if (!$user instanceof PasswordAuthenticatedUserInterface) {
             if (!$user instanceof UserInterface) {
@@ -53,10 +50,7 @@ class UserPasswordHasher implements UserPasswordHasherInterface
         return $hasher->hash($plainPassword, $salt);
     }
 
-    /**
-     * @param PasswordAuthenticatedUserInterface $user
-     */
-    public function isPasswordValid($user, string $plainPassword): bool
+    public function isPasswordValid(PasswordAuthenticatedUserInterface $user, string $plainPassword): bool
     {
         if (!$user instanceof PasswordAuthenticatedUserInterface) {
             if (!$user instanceof UserInterface) {
@@ -79,10 +73,7 @@ class UserPasswordHasher implements UserPasswordHasherInterface
         return $hasher->verify($user->getPassword(), $plainPassword, $salt);
     }
 
-    /**
-     * @param PasswordAuthenticatedUserInterface $user
-     */
-    public function needsRehash($user): bool
+    public function needsRehash(PasswordAuthenticatedUserInterface $user): bool
     {
         if (null === $user->getPassword()) {
             return false;

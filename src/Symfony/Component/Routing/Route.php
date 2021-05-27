@@ -186,7 +186,7 @@ class Route implements \Serializable
      *
      * @return $this
      */
-    public function setSchemes($schemes)
+    public function setSchemes(string|array $schemes)
     {
         $this->schemes = array_map('strtolower', (array) $schemes);
         $this->compiled = null;
@@ -225,7 +225,7 @@ class Route implements \Serializable
      *
      * @return $this
      */
-    public function setMethods($methods)
+    public function setMethods(string|array $methods)
     {
         $this->methods = array_map('strtoupper', (array) $methods);
         $this->compiled = null;
@@ -285,7 +285,7 @@ class Route implements \Serializable
      *
      * @return $this
      */
-    public function setOption(string $name, $value)
+    public function setOption(string $name, mixed $value)
     {
         $this->options[$name] = $value;
         $this->compiled = null;
@@ -389,7 +389,7 @@ class Route implements \Serializable
      *
      * @return $this
      */
-    public function setDefault(string $name, $default)
+    public function setDefault(string $name, mixed $default)
     {
         if ('_locale' === $name && $this->isLocalized()) {
             return $this;

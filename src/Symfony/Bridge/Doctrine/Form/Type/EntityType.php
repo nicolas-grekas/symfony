@@ -46,11 +46,9 @@ class EntityType extends DoctrineType
     /**
      * Return the default loader object.
      *
-     * @param QueryBuilder $queryBuilder
-     *
      * @return ORMQueryBuilderLoader
      */
-    public function getLoader(ObjectManager $manager, $queryBuilder, string $class)
+    public function getLoader(ObjectManager $manager, object $queryBuilder, string $class)
     {
         if (!$queryBuilder instanceof QueryBuilder) {
             throw new \TypeError(sprintf('Expected an instance of "%s", but got "%s".', QueryBuilder::class, get_debug_type($queryBuilder)));
@@ -76,7 +74,7 @@ class EntityType extends DoctrineType
      * @internal This method is public to be usable as callback. It should not
      *           be used in user code.
      */
-    public function getQueryBuilderPartsForCachingHash($queryBuilder): ?array
+    public function getQueryBuilderPartsForCachingHash(object $queryBuilder): ?array
     {
         if (!$queryBuilder instanceof QueryBuilder) {
             throw new \TypeError(sprintf('Expected an instance of "%s", but got "%s".', QueryBuilder::class, get_debug_type($queryBuilder)));

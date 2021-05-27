@@ -73,21 +73,15 @@ class PercentToLocalizedStringTransformer implements DataTransformerInterface
     /**
      * Transforms between a normalized format (integer or float) into a percentage value.
      *
-     * @param int|float $value Normalized value
-     *
      * @return string Percentage value
      *
      * @throws TransformationFailedException if the given value is not numeric or
      *                                       if the value could not be transformed
      */
-    public function transform($value)
+    public function transform(int|float $value)
     {
         if (null === $value) {
             return '';
-        }
-
-        if (!is_numeric($value)) {
-            throw new TransformationFailedException('Expected a numeric.');
         }
 
         if (self::FRACTIONAL == $this->type) {
@@ -108,14 +102,12 @@ class PercentToLocalizedStringTransformer implements DataTransformerInterface
     /**
      * Transforms between a percentage value into a normalized format (integer or float).
      *
-     * @param string $value Percentage value
-     *
      * @return int|float Normalized value
      *
      * @throws TransformationFailedException if the given value is not a string or
      *                                       if the value could not be transformed
      */
-    public function reverseTransform($value)
+    public function reverseTransform(string $value)
     {
         if (!\is_string($value)) {
             throw new TransformationFailedException('Expected a string.');
@@ -205,12 +197,8 @@ class PercentToLocalizedStringTransformer implements DataTransformerInterface
 
     /**
      * Rounds a number according to the configured scale and rounding mode.
-     *
-     * @param int|float $number A number
-     *
-     * @return int|float The rounded number
      */
-    private function round($number)
+    private function round(int|float $number): int|float
     {
         if (null !== $this->scale && null !== $this->roundingMode) {
             // shift number to maintain the correct scale during rounding

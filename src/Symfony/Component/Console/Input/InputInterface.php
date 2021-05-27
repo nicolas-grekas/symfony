@@ -41,7 +41,7 @@ interface InputInterface
      *
      * @return bool true if the value is contained in the raw parameters
      */
-    public function hasParameterOption($values, bool $onlyParams = false);
+    public function hasParameterOption(string|array $values, bool $onlyParams = false);
 
     /**
      * Returns the value of a raw option (not parsed).
@@ -57,7 +57,7 @@ interface InputInterface
      *
      * @return mixed The option value
      */
-    public function getParameterOption($values, $default = false, bool $onlyParams = false);
+    public function getParameterOption(string|array $values, $default = false, bool $onlyParams = false);
 
     /**
      * Binds the current Input instance with the given arguments and options.
@@ -96,16 +96,14 @@ interface InputInterface
      *
      * @throws InvalidArgumentException When argument given doesn't exist
      */
-    public function setArgument(string $name, $value);
+    public function setArgument(string $name, string|array|null $value);
 
     /**
      * Returns true if an InputArgument object exists by name or position.
      *
-     * @param string|int $name The InputArgument name or position
-     *
      * @return bool true if the InputArgument object exists, false otherwise
      */
-    public function hasArgument($name);
+    public function hasArgument(string|int $name);
 
     /**
      * Returns all the given options merged with the default values.

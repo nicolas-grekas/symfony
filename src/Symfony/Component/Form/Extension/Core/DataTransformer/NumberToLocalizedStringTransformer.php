@@ -84,21 +84,15 @@ class NumberToLocalizedStringTransformer implements DataTransformerInterface
     /**
      * Transforms a number type into localized number.
      *
-     * @param int|float $value Number value
-     *
      * @return string Localized value
      *
      * @throws TransformationFailedException if the given value is not numeric
      *                                       or if the value can not be transformed
      */
-    public function transform($value)
+    public function transform(int|float|null $value)
     {
         if (null === $value) {
             return '';
-        }
-
-        if (!is_numeric($value)) {
-            throw new TransformationFailedException('Expected a numeric.');
         }
 
         $formatter = $this->getNumberFormatter();
@@ -117,19 +111,13 @@ class NumberToLocalizedStringTransformer implements DataTransformerInterface
     /**
      * Transforms a localized number into an integer or float.
      *
-     * @param string $value The localized value
-     *
      * @return int|float The numeric value
      *
      * @throws TransformationFailedException if the given value is not a string
      *                                       or if the value can not be transformed
      */
-    public function reverseTransform($value)
+    public function reverseTransform(string|null $value)
     {
-        if (null !== $value && !\is_string($value)) {
-            throw new TransformationFailedException('Expected a string.');
-        }
-
         if (null === $value || '' === $value) {
             return null;
         }
@@ -217,7 +205,7 @@ class NumberToLocalizedStringTransformer implements DataTransformerInterface
     /**
      * @internal
      */
-    protected function castParsedValue($value)
+    protected function castParsedValue(int|float $value): int|float
     {
         if (\is_int($value) && $value === (int) $float = (float) $value) {
             return $float;
@@ -228,12 +216,8 @@ class NumberToLocalizedStringTransformer implements DataTransformerInterface
 
     /**
      * Rounds a number according to the configured scale and rounding mode.
-     *
-     * @param int|float $number A number
-     *
-     * @return int|float The rounded number
      */
-    private function round($number)
+    private function round(int|float $number): int|float
     {
         if (null !== $this->scale && null !== $this->roundingMode) {
             // shift number to maintain the correct scale during rounding

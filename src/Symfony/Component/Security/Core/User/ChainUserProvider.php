@@ -126,11 +126,9 @@ class ChainUserProvider implements UserProviderInterface, PasswordUpgraderInterf
     }
 
     /**
-     * @param PasswordAuthenticatedUserInterface $user
-     *
      * {@inheritdoc}
      */
-    public function upgradePassword($user, string $newEncodedPassword): void
+    public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newEncodedPassword): void
     {
         if (!$user instanceof PasswordAuthenticatedUserInterface) {
             trigger_deprecation('symfony/security-core', '5.3', 'The "%s::upgradePassword()" method expects an instance of "%s" as first argument, the "%s" class should implement it.', PasswordUpgraderInterface::class, PasswordAuthenticatedUserInterface::class, get_debug_type($user));

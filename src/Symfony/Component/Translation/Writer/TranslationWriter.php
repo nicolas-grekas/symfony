@@ -30,7 +30,7 @@ class TranslationWriter implements TranslationWriterInterface
      *
      * @param string $format The format of the dumper
      */
-    public function addDumper($format, DumperInterface $dumper)
+    public function addDumper(string $format, DumperInterface $dumper)
     {
         $this->dumpers[$format] = $dumper;
     }

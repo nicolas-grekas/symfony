@@ -38,7 +38,7 @@ class InputArgument
      *
      * @throws InvalidArgumentException When argument mode is not valid
      */
-    public function __construct(string $name, int $mode = null, string $description = '', $default = null)
+    public function __construct(string $name, int $mode = null, string $description = '', string|array|null $default = null)
     {
         if (null === $mode) {
             $mode = self::OPTIONAL;
@@ -90,7 +90,7 @@ class InputArgument
      *
      * @throws LogicException When incorrect default value is given
      */
-    public function setDefault($default = null)
+    public function setDefault(string|array|null $default = null)
     {
         if (self::REQUIRED === $this->mode && null !== $default) {
             throw new LogicException('Cannot set a default value except for InputArgument::OPTIONAL mode.');

@@ -126,7 +126,7 @@ class ConstraintViolationList implements \IteratorAggregate, ConstraintViolation
     /**
      * @return bool
      */
-    public function offsetExists($offset)
+    public function offsetExists(int $offset)
     {
         return $this->has($offset);
     }
@@ -134,7 +134,7 @@ class ConstraintViolationList implements \IteratorAggregate, ConstraintViolation
     /**
      * {@inheritdoc}
      */
-    public function offsetGet($offset)
+    public function offsetGet(int $offset)
     {
         return $this->get($offset);
     }
@@ -142,7 +142,7 @@ class ConstraintViolationList implements \IteratorAggregate, ConstraintViolation
     /**
      * {@inheritdoc}
      */
-    public function offsetSet($offset, $violation)
+    public function offsetSet(int|null $offset, $violation)
     {
         if (null === $offset) {
             $this->add($violation);
@@ -154,7 +154,7 @@ class ConstraintViolationList implements \IteratorAggregate, ConstraintViolation
     /**
      * {@inheritdoc}
      */
-    public function offsetUnset($offset)
+    public function offsetUnset(int $offset)
     {
         $this->remove($offset);
     }
@@ -166,7 +166,7 @@ class ConstraintViolationList implements \IteratorAggregate, ConstraintViolation
      *
      * @return static new instance which contains only specific errors
      */
-    public function findByCodes($codes)
+    public function findByCodes(string|array $codes)
     {
         $codes = (array) $codes;
         $violations = [];

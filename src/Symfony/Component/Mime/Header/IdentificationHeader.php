@@ -24,10 +24,7 @@ final class IdentificationHeader extends AbstractHeader
     private $ids = [];
     private $idsAsAddresses = [];
 
-    /**
-     * @param string|array $ids
-     */
-    public function __construct(string $name, $ids)
+    public function __construct(string $name, string|array $ids)
     {
         parent::__construct($name);
 
@@ -35,11 +32,9 @@ final class IdentificationHeader extends AbstractHeader
     }
 
     /**
-     * @param string|array $body a string ID or an array of IDs
-     *
      * @throws RfcComplianceException
      */
-    public function setBody($body)
+    public function setBody(string|array $body)
     {
         $this->setId($body);
     }
@@ -52,11 +47,9 @@ final class IdentificationHeader extends AbstractHeader
     /**
      * Set the ID used in the value of this header.
      *
-     * @param string|array $id
-     *
      * @throws RfcComplianceException
      */
-    public function setId($id)
+    public function setId(string|array $id)
     {
         $this->setIds(\is_array($id) ? $id : [$id]);
     }
