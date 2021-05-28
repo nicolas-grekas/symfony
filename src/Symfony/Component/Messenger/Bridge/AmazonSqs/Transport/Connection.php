@@ -58,8 +58,7 @@ class Connection
     private $currentResponse;
     /** @var array[] */
     private $buffer = [];
-    /** @var string|null */
-    private $queueUrl;
+    private string|null $queueUrl;
 
     public function __construct(array $configuration, SqsClient $client = null, string $queueUrl = null)
     {

@@ -81,26 +81,15 @@ class Connection
     private $amqpFactory;
     private $autoSetupExchange;
     private $autoSetupDelayExchange;
-
-    /**
-     * @var \AMQPChannel|null
-     */
-    private $amqpChannel;
-
-    /**
-     * @var \AMQPExchange|null
-     */
-    private $amqpExchange;
+    private \AMQPChannel|null $amqpChannel;
+    private \AMQPExchange|null $amqpExchange;
 
     /**
      * @var \AMQPQueue[]|null
      */
     private $amqpQueues = [];
 
-    /**
-     * @var \AMQPExchange|null
-     */
-    private $amqpDelayExchange;
+    private \AMQPExchange|null $amqpDelayExchange;
 
     public function __construct(array $connectionOptions, array $exchangeOptions, array $queuesOptions, AmqpFactory $amqpFactory = null)
     {

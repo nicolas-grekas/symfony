@@ -42,10 +42,7 @@ class InMemoryTransport implements TransportInterface, ResetInterface
      */
     private $queue = [];
 
-    /**
-     * @var SerializerInterface|null
-     */
-    private $serializer;
+    private SerializerInterface|null $serializer;
 
     public function __construct(SerializerInterface $serializer = null)
     {
@@ -122,10 +119,7 @@ class InMemoryTransport implements TransportInterface, ResetInterface
         return $this->decode($this->sent);
     }
 
-    /**
-     * @return Envelope|array
-     */
-    private function encode(Envelope $envelope)
+    private function encode(Envelope $envelope): Envelope|array
     {
         if (null === $this->serializer) {
             return $envelope;

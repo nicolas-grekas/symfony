@@ -29,8 +29,7 @@ final class ErrorDetailsStamp implements StampInterface
     /** @var string */
     private $exceptionMessage;
 
-    /** @var FlattenException|null */
-    private $flattenException;
+    private FlattenException|null $flattenException;
 
     /**
      * @param int|mixed $exceptionCode

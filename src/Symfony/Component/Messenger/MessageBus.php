@@ -61,9 +61,6 @@ class MessageBus implements MessageBusInterface
      */
     public function dispatch(object $message, array $stamps = []): Envelope
     {
-        if (!\is_object($message)) {
-            throw new \TypeError(sprintf('Invalid argument provided to "%s()": expected object, but got "%s".', __METHOD__, get_debug_type($message)));
-        }
         $envelope = Envelope::wrap($message, $stamps);
         $middlewareIterator = $this->middlewareAggregate->getIterator();
 
