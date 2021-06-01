@@ -95,7 +95,7 @@ class Link implements EvolvableLinkInterface
      *
      * @return static
      */
-    public function withHref(string $href)
+    public function withHref(string|\Stringable $href)
     {
         $that = clone $this;
         $that->href = $href;
