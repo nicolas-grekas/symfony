@@ -27,15 +27,15 @@ trait LazyGhostTrait
      * @param array<string, true> $skippedProperties An array indexed by the properties to skip,
      *                                               aka the ones that the initializer doesn't set
      */
-    public static function createLazyGhost(\Closure $initializer, array $skippedProperties = []): static
+    public static function createLazyGhost(\Closure $initializer, array $skippedProperties = [], self $instance = null): static
     {
-        if (self::class !== $class = static::class) {
+        if (self::class !== $class = $instance ? $instance::class : static::class) {
             $skippedProperties["\0".self::class."\0lazyObjectId"] = true;
         } elseif (\defined($class.'::LAZY_OBJECT_PROPERTY_SCOPES')) {
             Hydrator::$propertyScopes[$class] ??= $class::LAZY_OBJECT_PROPERTY_SCOPES;
         }
 
-        $instance = (Registry::$classReflectors[$class] ??= new \ReflectionClass($class))->newInstanceWithoutConstructor();
+        $instance ??= (Registry::$classReflectors[$class] ??= new \ReflectionClass($class))->newInstanceWithoutConstructor();
         Registry::$defaultProperties[$class] ??= (array) $instance;
         $instance->lazyObjectId = $id = spl_object_id($instance);
         Registry::$states[$id] = new LazyObjectState($initializer, $skippedProperties);
@@ -56,11 +56,22 @@ trait LazyGhostTrait
             return true;
         }
 
-        if (LazyObjectState::STATUS_INITIALIZED_PARTIAL === $state->status) {
-            return \count($state->preInitSetProperties) !== \count((array) $this);
+        if (LazyObjectState::STATUS_INITIALIZED_FULL === $state->status) {
+            return true;
         }
 
-        return LazyObjectState::STATUS_INITIALIZED_FULL === $state->status;
+        $class = static::class;
+        $properties = (array) $this;
+        $propertyScopes = Hydrator::$propertyScopes[$class] ??= Hydrator::getPropertyScopes($class);
+        foreach ($propertyScopes as $key => [$scope, $name]) {
+            $propertyScopes[$k = "\0$scope\0$name"] ?? $propertyScopes[$k = "\0".($scope = '*')."\0$name"] ?? $k = $name;
+
+            if ($k === $key && !\array_key_exists($k, $properties) && !isset($state->unsetProperties[$scope][$name])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
