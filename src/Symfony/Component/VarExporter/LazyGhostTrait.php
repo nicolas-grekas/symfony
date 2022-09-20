@@ -192,10 +192,17 @@ trait LazyGhostTrait
         $state = null;
 
         if ([$class, , $readonlyScope] = $propertyScopes[$name] ?? null) {
-            $scope = Registry::getScope($propertyScopes, $class, $name, $readonlyScope);
+            $scope = Registry::getScope($propertyScopes, $class, $name, $readonlyScope, $realScope);
 
             $state = Registry::$states[$this->lazyObjectId ?? ''] ?? null;
+
             if ($state && ($readonlyScope === $scope || isset($propertyScopes["\0$scope\0$name"]))) {
+                if (\ReflectionProperty::class !== $realScope
+                    && ($state->status || $state->initialize($this, null, null))
+                    && LazyObjectState::STATUS_UNINITIALIZED_FULL === $state->status
+                ) {
+                    $state->initialize($this, $name, $readonlyScope ?? $scope);
+                }
                 goto set_in_scope;
             }
         }
