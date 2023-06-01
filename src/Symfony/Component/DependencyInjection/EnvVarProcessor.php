@@ -37,6 +37,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
     public static function getProvidedTypes(): array
     {
         return [
+            'array' => 'array',
             'base64' => 'string',
             'bool' => 'bool',
             'not' => 'bool',
@@ -50,7 +51,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
             'url' => 'array',
             'query_string' => 'array',
             'resolve' => 'string',
-            'default' => 'bool|int|float|string|array',
+            'default' => 'bool|int|float|string|array|null',
             'string' => 'string',
             'trim' => 'string',
             'require' => 'bool|int|float|string|array',
@@ -191,12 +192,8 @@ class EnvVarProcessor implements EnvVarProcessorInterface
             }
         }
 
-        if (null === $env) {
-            if (!isset($this->getProvidedTypes()[$prefix])) {
-                throw new RuntimeException(sprintf('Unsupported env var prefix "%s".', $prefix));
-            }
-
-            return null;
+        if ('array' === $env) {
+            return (array) $env;
         }
 
         if ('shuffle' === $prefix) {
@@ -205,7 +202,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
             return $env;
         }
 
-        if (!\is_scalar($env)) {
+        if (null !== $env && !\is_scalar($env)) {
             throw new RuntimeException(sprintf('Non-scalar env var "%s" cannot be cast to "%s".', $name, $prefix));
         }
 
@@ -220,7 +217,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('int' === $prefix) {
-            if (false === $env = filter_var($env, \FILTER_VALIDATE_INT) ?: filter_var($env, \FILTER_VALIDATE_FLOAT)) {
+            if (null !== $env && false === $env = filter_var($env, \FILTER_VALIDATE_INT) ?: filter_var($env, \FILTER_VALIDATE_FLOAT)) {
                 throw new RuntimeException(sprintf('Non-numeric env var "%s" cannot be cast to int.', $name));
             }
 
@@ -228,7 +225,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('float' === $prefix) {
-            if (false === $env = filter_var($env, \FILTER_VALIDATE_FLOAT)) {
+            if (null !== $env && false === $env = filter_var($env, \FILTER_VALIDATE_FLOAT)) {
                 throw new RuntimeException(sprintf('Non-numeric env var "%s" cannot be cast to float.', $name));
             }
 
@@ -236,6 +233,9 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('const' === $prefix) {
+            if (null === $env) {
+                throw new RuntimeException(sprintf('Env var "%s" is null and cannot be cast from a constant.', $name));
+            }
             if (!\defined($env)) {
                 throw new RuntimeException(sprintf('Env var "%s" maps to undefined constant "%s".', $name, $env));
             }
@@ -244,10 +244,14 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('base64' === $prefix) {
-            return base64_decode(strtr($env, '-_', '+/'));
+            return base64_decode(strtr($env ?? '', '-_', '+/'));
         }
 
         if ('json' === $prefix) {
+            if (null === $env) {
+                throw new RuntimeException(sprintf('Env var "%s" is null and cannot be json-decoded.', $name));
+            }
+
             $env = json_decode($env, true);
 
             if (\JSON_ERROR_NONE !== json_last_error()) {
@@ -262,7 +266,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('url' === $prefix) {
-            $parsedEnv = parse_url($env);
+            $parsedEnv = parse_url($env ?? '');
 
             if (false === $parsedEnv) {
                 throw new RuntimeException(sprintf('Invalid URL in env var "%s".', $name));
@@ -286,7 +290,7 @@ class EnvVarProcessor implements EnvVarProcessorInterface
         }
 
         if ('query_string' === $prefix) {
-            $queryString = parse_url($env, \PHP_URL_QUERY) ?: $env;
+            $queryString = parse_url($env ?? '', \PHP_URL_QUERY) ?: $env ?? [];
             parse_str($queryString, $result);
 
             return $result;
@@ -309,15 +313,19 @@ class EnvVarProcessor implements EnvVarProcessorInterface
                 }
 
                 return $value;
-            }, $env);
+            }, $env ?? '');
         }
 
         if ('csv' === $prefix) {
-            return '' === $env ? [] : str_getcsv($env, ',', '"', '');
+            return '' === ($env ?? '') ? [] : str_getcsv($env, ',', '"', '');
         }
 
         if ('trim' === $prefix) {
-            return trim($env);
+            return trim($env ?? '');
+        }
+
+        if (null === $env && isset($this->getProvidedTypes()[$prefix])) {
+            return null;
         }
 
         throw new RuntimeException(sprintf('Unsupported env var prefix "%s" for env name "%s".', $prefix, $name));

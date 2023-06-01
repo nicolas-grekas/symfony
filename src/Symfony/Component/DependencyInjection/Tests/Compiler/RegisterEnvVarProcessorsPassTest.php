@@ -31,6 +31,7 @@ class RegisterEnvVarProcessorsPassTest extends TestCase
 
         $expected = [
             'foo' => ['string'],
+            'array' => ['array'],
             'base64' => ['string'],
             'bool' => ['bool'],
             'not' => ['bool'],
@@ -44,7 +45,7 @@ class RegisterEnvVarProcessorsPassTest extends TestCase
             'url' => ['array'],
             'query_string' => ['array'],
             'resolve' => ['string'],
-            'default' => ['bool', 'int', 'float', 'string', 'array'],
+            'default' => ['bool', 'int', 'float', 'string', 'array', 'null'],
             'string' => ['string'],
             'trim' => ['string'],
             'require' => ['bool', 'int', 'float', 'string', 'array'],
@@ -67,7 +68,7 @@ class RegisterEnvVarProcessorsPassTest extends TestCase
     public function testBadProcessor()
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Invalid type "foo" returned by "Symfony\Component\DependencyInjection\Tests\Compiler\BadProcessor::getProvidedTypes()", expected one of "array", "bool", "float", "int", "string", "BackedEnum".');
+        $this->expectExceptionMessage('Invalid type "foo" returned by "Symfony\Component\DependencyInjection\Tests\Compiler\BadProcessor::getProvidedTypes()", expected one of "array", "bool", "float", "int", "string", "BackedEnum", "null".');
         $container = new ContainerBuilder();
         $container->register('foo', BadProcessor::class)->addTag('container.env_var_processor');
 

@@ -50,8 +50,8 @@ class ValidateEnvPlaceholdersPassTest extends TestCase
         $this->expectExceptionMessage('Invalid configuration for path "env_extension.string_node": "fail" is not a valid string');
         $container = new ContainerBuilder();
         $container->setParameter('env(STRING)', 'fail');
-        $container->registerExtension($ext = new EnvExtension());
-        $container->prependExtensionConfig('env_extension', $expected = [
+        $container->registerExtension(new EnvExtension());
+        $container->prependExtensionConfig('env_extension', [
             'string_node' => '%env(STRING)%',
         ]);
 
@@ -66,7 +66,7 @@ class ValidateEnvPlaceholdersPassTest extends TestCase
         $container = new ContainerBuilder();
         $container->setParameter('env(FLOATISH)', 3.2);
         $container->registerExtension($ext = new EnvExtension());
-        $container->prependExtensionConfig('env_extension', $expected = [
+        $container->prependExtensionConfig('env_extension', [
             'float_node' => '%env(FLOATISH)%',
         ]);
 
@@ -76,7 +76,7 @@ class ValidateEnvPlaceholdersPassTest extends TestCase
     public function testEnvsAreValidatedInConfigWithInvalidPlaceholder()
     {
         $this->expectException(InvalidTypeException::class);
-        $this->expectExceptionMessage('Invalid type for path "env_extension.bool_node". Expected "bool", but got one of "bool", "int", "float", "string", "array".');
+        $this->expectExceptionMessage('Invalid type for path "env_extension.bool_node". Expected "bool", but got "bool|int|float|string|array".');
         $container = new ContainerBuilder();
         $container->registerExtension($ext = new EnvExtension());
         $container->prependExtensionConfig('env_extension', $expected = [
@@ -225,7 +225,7 @@ class ValidateEnvPlaceholdersPassTest extends TestCase
 
         $container = new ContainerBuilder();
         $container->registerExtension($ext = new EnvExtension());
-        $container->prependExtensionConfig('env_extension', $expected = [
+        $container->prependExtensionConfig('env_extension', [
             'scalar_node_not_empty_validated' => '%env(SOME)%',
         ]);
 

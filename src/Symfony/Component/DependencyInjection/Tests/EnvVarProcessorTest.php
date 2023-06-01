@@ -305,7 +305,7 @@ class EnvVarProcessorTest extends TestCase
         return [
             ['[1]', [1]],
             ['{"key": "value"}', ['key' => 'value']],
-            [null, null],
+            ['null', null],
         ];
     }
 
@@ -720,7 +720,7 @@ CSV;
             ['1,2," 3 "', ['1', '2', ' 3 ']],
             ['\\,\\\\', ['\\', '\\\\']],
             [$complex, ['', '"', 'foo"', '\\"', '\\', 'foo\\']],
-            [null, null],
+            [null, []],
         ];
     }
 
