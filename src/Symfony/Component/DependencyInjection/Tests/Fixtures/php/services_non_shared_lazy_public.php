@@ -69,11 +69,7 @@ class Symfony_DI_PhpDumper_Service_Non_Shared_Lazy extends Container
 class FooLazyClassGhost82ad1a4 extends \Bar\FooLazyClass implements \Symfony\Component\VarExporter\LazyObjectInterface
 {
     use \Symfony\Component\VarExporter\LazyGhostTrait;
-
-    private const LAZY_OBJECT_PROPERTY_SCOPES = [];
 }
 
 // Help opcache.preload discover always-needed symbols
-class_exists(\Symfony\Component\VarExporter\Internal\Hydrator::class);
 class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectRegistry::class);
-class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectState::class);

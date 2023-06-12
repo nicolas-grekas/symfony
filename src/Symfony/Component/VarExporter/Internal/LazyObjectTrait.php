@@ -11,24 +11,42 @@
 
 namespace Symfony\Component\VarExporter\Internal;
 
-use Symfony\Component\Serializer\Attribute\Ignore;
-
-if (\PHP_VERSION_ID >= 80300) {
+/**
+ * @internal
+ */
+trait LazyObjectTrait
+{
     /**
-     * @internal
+     * Returns whether the object is initialized.
+     *
+     * @param $partial Whether partially initialized objects should be considered as initialized
      */
-    trait LazyObjectTrait
+    public function isLazyObjectInitialized(bool $partial = false): bool
     {
-        #[Ignore]
-        private readonly LazyObjectState $lazyObjectState;
+        return !\ReflectionLazyObject::isLazyObject($this);
     }
-} else {
+
     /**
-     * @internal
+     * @return bool Returns false when the object cannot be reset, ie when it's not a lazy object
      */
-    trait LazyObjectTrait
+    public function resetLazyObject(): bool
     {
-        #[Ignore]
-        private LazyObjectState $lazyObjectState;
+        if (\ReflectionLazyObject::isLazyObject($this)) {
+            return true;
+        }
+
+        if (![$initializer, $strategy, $skippedProperties] = LazyObjectRegistry::$initializers[$this] ?? null) {
+            return false;
+        }
+
+        $r = \ReflectionLazyObject::makeLazy($this, $initializer, $strategy);
+
+        foreach ($skippedProperties as $class => $properties) {
+            foreach ($properties as $property) {
+                $r->skipProperty($property, $class);
+            }
+        }
+
+        return true;
     }
 }
