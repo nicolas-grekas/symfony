@@ -811,10 +811,8 @@ EOHTML
         parent::enterHash($cursor, $type, $class, false);
 
         if ($cursor->skipChildren || $cursor->depth >= $this->displayOptions['maxDepth']) {
-            $cursor->skipChildren = false;
             $eol = ' class=sf-dump-compact>';
         } else {
-            $this->expandNextHash = false;
             $eol = ' class=sf-dump-expanded>';
         }
 

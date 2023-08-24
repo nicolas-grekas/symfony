@@ -380,6 +380,7 @@ class Data implements \ArrayAccess, \Countable, \IteratorAggregate
             } else {
                 $children = [];
             }
+            $cursor->skipChildren = false;
             switch ($item->type) {
                 case Stub::TYPE_STRING:
                     $dumper->dumpString($cursor, $item->value, Stub::STRING_BINARY === $item->class, $cut);
@@ -404,7 +405,6 @@ class Data implements \ArrayAccess, \Countable, \IteratorAggregate
                     } elseif ($children && 0 <= $cut) {
                         $cut += \count($children);
                     }
-                    $cursor->skipChildren = false;
                     $dumper->leaveHash($cursor, $item->type, $item->class, $withChildren, $cut);
                     break;
 

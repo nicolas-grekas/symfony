@@ -52,9 +52,6 @@ class CliDumper extends AbstractDumper
         "\033" => '\e',
     ];
 
-    protected $collapseNextHash = false;
-    protected $expandNextHash = false;
-
     private $displayOptions = [
         'fileLinkFormat' => null,
     ];
@@ -291,9 +288,8 @@ class CliDumper extends AbstractDumper
         $this->expandNextHash = false;
         $attr = $cursor->attr;
 
-        if ($this->collapseNextHash) {
-            $cursor->skipChildren = true;
-            $this->collapseNextHash = $hasChild = false;
+        if ($cursor->skipChildren) {
+            $hasChild = false;
         }
 
         $class = $this->utf8Encode($class);
@@ -412,12 +408,8 @@ class CliDumper extends AbstractDumper
                                 break;
                         }
 
-                        if (isset($attr['collapse'])) {
-                            if ($attr['collapse']) {
-                                $this->collapseNextHash = true;
-                            } else {
-                                $this->expandNextHash = true;
-                            }
+                        if ($attr['collapse'] ?? false) {
+                            $cursor->skipChildren = true;
                         }
 
                         $this->line .= $bin.$this->style($style, $key[1], $attr).($attr['separator'] ?? ': ');
