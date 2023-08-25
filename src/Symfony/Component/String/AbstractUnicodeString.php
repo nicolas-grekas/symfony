@@ -491,11 +491,20 @@ abstract class AbstractUnicodeString extends AbstractString
 
         foreach (explode("\n", $s) as $s) {
             if ($ignoreAnsiDecoration) {
-                $s = preg_replace('/(?:\x1B(?:
-                    \[ [\x30-\x3F]*+ [\x20-\x2F]*+ [\x40-\x7E]
-                    | [P\]X^_] .*? \x1B\\\\
-                    | [\x41-\x7E]
-                )|[\p{Cc}\x7F]++)/xu', '', $s);
+                // regexp from https://github.com/chalk/ansi-regex/blob/main/index.js
+                $s = preg_replace('{
+                    [\x1B\x9B]
+                    [[\]()#;?]*
+                    (?:
+                        (?:
+                            (?: ;[-a-zA-Z\d/#&.:=?%@~_]+ )*
+                            | [a-zA-Z\d]+ (?: ;[-a-zA-Z\d/#&.:=?%@~_]* )*
+                        )?
+                        \x07
+                        | (?: \d{1,4} (?: ;\d{0,4})* )? [\dA-PR-TZcf-nq-uy=><~]
+                    )
+                    | [\p{Cc}\x7F]++
+                }xu', '', $s);
             }
 
             $lineWidth = $this->wcswidth($s);
