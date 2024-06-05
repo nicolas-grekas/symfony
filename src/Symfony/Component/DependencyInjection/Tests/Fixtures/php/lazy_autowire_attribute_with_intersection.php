@@ -76,19 +76,11 @@ class objectProxy1fd6daa implements \Symfony\Component\DependencyInjection\Tests
 {
     use \Symfony\Component\VarExporter\LazyProxyTrait;
 
-    private const LAZY_OBJECT_PROPERTY_SCOPES = [];
-
     public function initializeLazyObject(): \Symfony\Component\DependencyInjection\Tests\Compiler\AInterface&\Symfony\Component\DependencyInjection\Tests\Compiler\IInterface
     {
-        if ($state = $this->lazyObjectState ?? null) {
-            return $state->realInstance ??= ($state->initializer)();
-        }
-
-        return $this;
+        return \ReflectionLazyObject::fromInstance($this)->initialize();
     }
 }
 
 // Help opcache.preload discover always-needed symbols
-class_exists(\Symfony\Component\VarExporter\Internal\Hydrator::class);
 class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectRegistry::class);
-class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectState::class);

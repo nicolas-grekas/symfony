@@ -74,13 +74,7 @@ class Symfony_DI_PhpDumper_Service_Wither_Lazy extends Container
 class WitherProxy1991f2a extends \Symfony\Component\DependencyInjection\Tests\Compiler\Wither implements \Symfony\Component\VarExporter\LazyObjectInterface
 {
     use \Symfony\Component\VarExporter\LazyProxyTrait;
-
-    private const LAZY_OBJECT_PROPERTY_SCOPES = [
-        'foo' => [parent::class, 'foo', null],
-    ];
 }
 
 // Help opcache.preload discover always-needed symbols
-class_exists(\Symfony\Component\VarExporter\Internal\Hydrator::class);
 class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectRegistry::class);
-class_exists(\Symfony\Component\VarExporter\Internal\LazyObjectState::class);

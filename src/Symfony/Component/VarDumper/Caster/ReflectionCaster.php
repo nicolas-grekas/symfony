@@ -179,6 +179,10 @@ class ReflectionCaster
             'constants' => 'getReflectionConstants',
         ]);
 
+        if ($c instanceof \ReflectionLazyObject) {
+            $c = new \ReflectionClass($c->name);
+        }
+
         foreach ($c->getProperties() as $n) {
             $a[$prefix.'properties'][$n->name] = $n;
         }

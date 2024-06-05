@@ -34,7 +34,6 @@ class LazyGhostTraitTest extends TestCase
             $ghost->__construct();
         });
 
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $instance));
         $this->assertSame(-4, $instance->public);
         $this->assertSame(4, $instance->publicReadonly);
     }
@@ -56,7 +55,6 @@ class LazyGhostTraitTest extends TestCase
             $ghost->__construct();
         });
 
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $instance));
         $this->assertTrue(isset($instance->public));
         $this->assertSame(4, $instance->publicReadonly);
     }
@@ -67,7 +65,6 @@ class LazyGhostTraitTest extends TestCase
             $ghost->__construct();
         });
 
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $instance));
         unset($instance->public);
         $this->assertSame(4, $instance->publicReadonly);
         $this->expectException(\BadMethodCallException::class);
@@ -81,7 +78,6 @@ class LazyGhostTraitTest extends TestCase
             $ghost->__construct();
         });
 
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $instance));
         $instance->public = 12;
         $this->assertSame(12, $instance->public);
         $this->assertSame(4, $instance->publicReadonly);
@@ -107,9 +103,7 @@ class LazyGhostTraitTest extends TestCase
 
         $clone = clone $instance;
 
-        $this->assertNotSame((array) $instance, (array) $clone);
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $instance));
-        $this->assertSame(["\0".TestClass::class."\0lazyObjectState"], array_keys((array) $clone));
+        $this->assertSame((array) $instance, (array) $clone);
 
         $clone = clone $clone;
         $this->assertTrue($clone->resetLazyObject());
@@ -126,7 +120,6 @@ class LazyGhostTraitTest extends TestCase
 
         $clone = unserialize($serialized);
         $expected = (array) $instance;
-        $this->assertArrayHasKey("\0".TestClass::class."\0lazyObjectState", $expected);
         unset($expected["\0".TestClass::class."\0lazyObjectState"]);
         $this->assertSame(array_keys($expected), array_keys((array) $clone));
         $this->assertFalse($clone->resetLazyObject());
@@ -209,7 +202,7 @@ class LazyGhostTraitTest extends TestCase
 
     public function testLazyClass()
     {
-        $obj = new LazyClass(fn ($proxy) => $proxy->public = 123);
+        $obj = new LazyClass(function ($proxy) { $proxy->public = 123; });
 
         $this->assertSame(123, $obj->public);
     }
