@@ -16,6 +16,7 @@ use Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrateg
 use Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionVoteObjectStrategyInterface;
 use Symfony\Component\Security\Core\Authorization\Strategy\AffirmativeStrategy;
 use Symfony\Component\Security\Core\Authorization\Voter\CacheableVoterInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
@@ -51,34 +52,39 @@ final class AccessDecisionManager implements AccessDecisionManagerInterface
     /**
      * @param bool $allowMultipleAttributes Whether to allow passing multiple values to the $attributes array
      */
-    public function decide(TokenInterface $token, array $attributes, mixed $object = null, bool $allowMultipleAttributes = false, ?AccessDecision &$accessDecision = null): bool
+    public function decide(TokenInterface $token, array $attributes, mixed $object = null, bool|AccessDecision|null $accessDecision = null): bool
     {
+        if (!$accessDecision instanceof AccessDecision) {
+            $accessDecision = new AccessDecision($accessDecision ?? false);
+        }
+
         // Special case for AccessListener, do not remove the right side of the condition before 6.0
-        if (\count($attributes) > 1 && !$allowMultipleAttributes) {
+        if (\count($attributes) > 1 && !$$accessDecision->allowMultipleAttributes) {
             throw new InvalidArgumentException(\sprintf('Passing more than one Security attribute to "%s()" is not supported.', __METHOD__));
         }
-        $decision = $this->strategy->decide(
-            $this->collectResults($token, $attributes, $object, $this->strategy instanceof AccessDecisionVoteObjectStrategyInterface),
-            $accessDecision,
-        );
 
-        return $decision;
+        return $accessDecision->isGranted = $this->strategy->decide(
+            $this->collectResults($token, $attributes, $object, $accessDecision)
+        );
     }
 
     /**
-     * @return \Traversable<int, VoteInterface|int>
+     * @return \Traversable<int>
      */
-    private function collectResults(TokenInterface $token, array $attributes, mixed $object, bool $returnAsObject): \Traversable
+    private function collectResults(TokenInterface $token, array $attributes, mixed $object, AccessDecision $accessDecision): \Traversable
     {
         foreach ($this->getVoters($attributes, $object) as $voter) {
-            $vote = null;
+            $vote = new Vote();
             $result = $voter->vote($token, $object, $attributes, $vote);
 
-            if (!($vote instanceof VoteInterface) && (!\is_int($result) || !(self::VALID_VOTES[$result] ?? false))) {
+            if (!\is_int($result) || !(self::VALID_VOTES[$result] ?? false)) {
                 throw new \LogicException(\sprintf('"%s::vote()" must return one of "%s" constants ("ACCESS_GRANTED", "ACCESS_DENIED" or "ACCESS_ABSTAIN"), "%s" returned.', get_debug_type($voter), VoterInterface::class, var_export($result, true)));
             }
 
-            yield $returnAsObject && null !== $vote ? $vote : $result;
+            $vote->result = $result;
+            $accessDecision->votes[] = $vote;
+
+            yield $result;
         }
     }
 

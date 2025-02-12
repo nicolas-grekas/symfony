@@ -61,7 +61,9 @@ class Security implements AuthorizationCheckerInterface, UserAuthorizationChecke
      */
     public function isGranted(mixed $attributes, mixed $subject = null, ?AccessDecision $accessDecision = null): bool
     {
-        return $this->container->get('security.authorization_checker')
+        $accessDecision ??= new AccessDecision();
+
+        return $accessDecision->isGranted = $this->container->get('security.authorization_checker')
             ->isGranted($attributes, $subject, $accessDecision);
     }
 
@@ -155,10 +157,12 @@ class Security implements AuthorizationCheckerInterface, UserAuthorizationChecke
      *
      * This should be used over isGranted() when checking permissions against a user that is not currently logged in or while in a CLI context.
      */
-    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null): bool
+    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null, ?AccessDecision $accessDecision = null): bool
     {
-        return $this->container->get('security.user_authorization_checker')
-            ->isGrantedForUser($user, $attribute, $subject);
+        $accessDecision ??= new AccessDecision();
+
+        return $accessDecision->isGranted = $this->container->get('security.user_authorization_checker')
+            ->isGrantedForUser($user, $attribute, $subject, $accessDecision);
     }
 
     private function getAuthenticator(?string $authenticatorName, string $firewallName): AuthenticatorInterface

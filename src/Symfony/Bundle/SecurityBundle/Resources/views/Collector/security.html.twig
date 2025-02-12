@@ -351,11 +351,11 @@
                     {% else %}
                         <table>
                             <thead>
-                                <tr>
-                                    <th>Listener</th>
-                                    <th>Duration</th>
-                                    <th>Response</th>
-                                </tr>
+                            <tr>
+                                <th>Listener</th>
+                                <th>Duration</th>
+                                <th>Response</th>
+                            </tr>
                             </thead>
 
                             {% set previous_event = (collector.listeners|first) %}
@@ -393,10 +393,10 @@
                                 <col style="width: 100%">
                             </colgroup>
                             <thead>
-                                <tr>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Authenticator</th>
-                                </tr>
+                            <tr>
+                                <th scope="col">Status</th>
+                                <th scope="col">Authenticator</th>
+                            </tr>
                             </thead>
                             {% for i, authenticator in collector.authenticators %}
                                 <tr class="sf-toggle"
@@ -518,8 +518,7 @@
                             <col style="width: 30px">
                             <col style="width: 120px">
                             <col style="width: 25%">
-                            <col style="width: 40%">
-                            <col style="width: 20%">
+                            <col style="width: 60%">
 
                             <thead>
                                 <tr>
@@ -527,7 +526,6 @@
                                     <th>Result</th>
                                     <th>Attributes</th>
                                     <th>Object</th>
-                                    <th>Message</th>
                                 </tr>
                             </thead>
 
@@ -536,7 +534,7 @@
                                     <tr class="voter_result">
                                         <td class="font-normal text-small text-muted nowrap">{{ loop.index }}</td>
                                         <td class="font-normal">
-                                            {{ decision.result.access
+                                            {{ decision.result
                                                 ? '<span class="label status-success same-width">GRANTED</span>'
                                                 : '<span class="label status-error same-width">DENIED</span>'
                                             }}
@@ -556,7 +554,6 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ profiler_dump(decision.seek('object')) }}</td>
-                                        <td>{{ decision.result.message }}</td>
                                     </tr>
                                     <tr class="voter_details">
                                         <td></td>
@@ -573,17 +570,17 @@
                                                             <td class="font-normal text-small">attribute {{ voter_detail['attributes'][0] }}</td>
                                                             {% endif %}
                                                             <td class="font-normal text-small">
-                                                                {% if voter_detail['vote'].access == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_GRANTED') %}
+                                                                {% if voter_detail['vote'] == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_GRANTED') %}
                                                                     ACCESS GRANTED
-                                                                {% elseif voter_detail['vote'].access == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_ABSTAIN') %}
+                                                                {% elseif voter_detail['vote'] == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_ABSTAIN') %}
                                                                     ACCESS ABSTAIN
-                                                                {% elseif voter_detail['vote'].access == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_DENIED') %}
+                                                                {% elseif voter_detail['vote'] == constant('Symfony\\Component\\Security\\Core\\Authorization\\Voter\\VoterInterface::ACCESS_DENIED') %}
                                                                     ACCESS DENIED
                                                                 {% else %}
-                                                                    unknown ({{ voter_detail['vote'].access }})
+                                                                    unknown ({{ voter_detail['vote'] }})
                                                                 {% endif %}
-                                                                {% if voter_detail['vote'].messages is not empty %}
-                                                                : {{ voter_detail['vote'].messages | join(', ')  }}
+                                                                {% if voter_detail['reasons'] is not empty %}
+                                                                : {{ voter_detail['reasons'] | join(', ')  }}
                                                                 {% endif %}
                                                             </td>
                                                         </tr>

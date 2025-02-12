@@ -20,12 +20,9 @@ use Symfony\Component\HttpKernel\DataCollector\DataCollector;
 use Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\SwitchUserToken;
-use Symfony\Component\Security\Core\Authorization\AccessDecision;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
 use Symfony\Component\Security\Core\Authorization\TraceableAccessDecisionManager;
 use Symfony\Component\Security\Core\Authorization\Voter\TraceableVoter;
-use Symfony\Component\Security\Core\Authorization\Voter\Vote;
-use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 use Symfony\Component\Security\Http\Firewall\SwitchUserListener;
 use Symfony\Component\Security\Http\FirewallMapInterface;
@@ -150,14 +147,11 @@ class SecurityDataCollector extends DataCollector implements LateDataCollectorIn
                     $decisionLog[$key]['voter_details'][] = [
                         'class' => $classData,
                         'attributes' => $voterDetail['attributes'], // Only displayed for unanimous strategy
-                        'vote' => $voterDetail['vote'] instanceof VoteInterface ? $voterDetail['vote'] : new Vote($voterDetail['vote']),
+                        'vote' => $voterDetail['vote'],
+                        'reasons' => $voterDetail['reasons'] ?? [],
                     ];
                 }
                 unset($decisionLog[$key]['voterDetails']);
-
-                if (!$decisionLog[$key]['result'] instanceof AccessDecision) {
-                    $decisionLog[$key]['result'] = new AccessDecision($decisionLog[$key]['result']);
-                }
             }
 
             $this->data['access_decision_log'] = $decisionLog;

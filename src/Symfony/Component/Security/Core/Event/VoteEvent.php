@@ -28,7 +28,8 @@ final class VoteEvent extends Event
         private VoterInterface $voter,
         private mixed $subject,
         private array $attributes,
-        private VoteInterface|int $vote,
+        private int $vote,
+        private array $reasons = [],
     ) {
     }
 
@@ -47,10 +48,13 @@ final class VoteEvent extends Event
         return $this->attributes;
     }
 
-    public function getVote(?VoteInterface &$vote = null): int
+    public function getVote(): int
     {
-        $vote = $this->vote;
+        return $this->vote;
+    }
 
-        return $this->vote instanceof VoteInterface ? $this->vote->getAccess() : $this->vote;
+    public function getReasons(): array
+    {
+        return $this->reasons;
     }
 }

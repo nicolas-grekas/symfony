@@ -11,8 +11,6 @@
 
 namespace Symfony\Component\Security\Core\Authorization\Strategy;
 
-use Symfony\Component\Security\Core\Authorization\AccessDecision;
-use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
 /**
@@ -32,7 +30,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Alexander M. Turek <me@derrabus.de>
  */
-final class ConsensusStrategy implements AccessDecisionVoteObjectStrategyInterface, \Stringable
+final class ConsensusStrategy implements AccessDecisionStrategyInterface, \Stringable
 {
     public function __construct(
         private bool $allowIfAllAbstainDecisions = false,
@@ -40,18 +38,11 @@ final class ConsensusStrategy implements AccessDecisionVoteObjectStrategyInterfa
     ) {
     }
 
-    public function decide(\Traversable $results, ?AccessDecision &$accessDecision = null): bool
+    public function decide(\Traversable $results): bool
     {
         $grant = 0;
         $deny = 0;
-        $allVotes = [];
-
         foreach ($results as $result) {
-            $allVotes[] = $result;
-            if ($result instanceof VoteInterface) {
-                $result = $result->getAccess();
-            }
-
             if (VoterInterface::ACCESS_GRANTED === $result) {
                 ++$grant;
             } elseif (VoterInterface::ACCESS_DENIED === $result) {
@@ -60,26 +51,18 @@ final class ConsensusStrategy implements AccessDecisionVoteObjectStrategyInterfa
         }
 
         if ($grant > $deny) {
-            $accessDecision = new AccessDecision(true, $allVotes);
-
-            return $accessDecision->getAccess();
+            return true;
         }
 
         if ($deny > $grant) {
-            $accessDecision = new AccessDecision(false, $allVotes);
-
-            return $accessDecision->getAccess();
+            return false;
         }
 
         if ($grant > 0) {
-            $accessDecision = new AccessDecision($this->allowIfEqualGrantedDeniedDecisions, $allVotes);
-
-            return $accessDecision->getAccess();
+            return $this->allowIfEqualGrantedDeniedDecisions;
         }
 
-        $accessDecision = new AccessDecision($this->allowIfAllAbstainDecisions, $allVotes);
-
-        return $accessDecision->getAccess();
+        return $this->allowIfAllAbstainDecisions;
     }
 
     public function __toString(): string

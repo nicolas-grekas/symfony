@@ -154,15 +154,9 @@ class SwitchUserListener extends AbstractListener
 
             throw $e;
         }
+        $accessDecision = new AccessDecision();
 
-        $accessDecision = null;
-        $decision = $this->accessDecisionManager->decide($token, [$this->role], $user, false, $accessDecision);
-        if(! $accessDecision instanceof AccessDecision) {
-            $accessDecision = new AccessDecision($decision);
-        }
-
-
-        if (!$decision) {
+        if (!$accessDecision->isGranted = $this->accessDecisionManager->decide($token, [$this->role], $user, $accessDecision)) {
             $exception = new AccessDeniedException();
             $exception->setAttributes($this->role);
             $exception->setAccessDecision($accessDecision);

@@ -12,6 +12,7 @@
 namespace Symfony\Bridge\Twig\Extension;
 
 use Symfony\Component\Security\Acl\Voter\FieldVote;
+use Symfony\Component\Security\Core\Authorization\AccessDecision;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Authorization\UserAuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
@@ -34,7 +35,7 @@ final class SecurityExtension extends AbstractExtension
     ) {
     }
 
-    public function isGranted(mixed $role, mixed $object = null, ?string $field = null): bool
+    public function isGranted(mixed $role, mixed $object = null, ?string $field = null, ?AccessDecision $accessDecision = null): bool
     {
         if (null === $this->securityChecker) {
             return false;
@@ -47,15 +48,23 @@ final class SecurityExtension extends AbstractExtension
 
             $object = new FieldVote($object, $field);
         }
+        if (!class_exists(AccessDecision::class)) {
+            try {
+                return $this->securityChecker->isGranted($role, $object);
+            } catch (AuthenticationCredentialsNotFoundException) {
+                return false;
+            }
+        }
+        $accessDecision ??= new AccessDecision();
 
         try {
-            return $this->securityChecker->isGranted($role, $object);
+            return $accessDecision->isGranted = $this->securityChecker->isGranted($role, $object, $accessDecision);
         } catch (AuthenticationCredentialsNotFoundException) {
-            return false;
+            return $accessDecision->isGranted = false;
         }
     }
 
-    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null, ?string $field = null): bool
+    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null, ?string $field = null, ?AccessDecision $accessDecision = null): bool
     {
         if (!$this->userSecurityChecker) {
             throw new \LogicException(\sprintf('An instance of "%s" must be provided to use "%s()".', UserAuthorizationCheckerInterface::class, __METHOD__));
@@ -68,8 +77,12 @@ final class SecurityExtension extends AbstractExtension
 
             $subject = new FieldVote($subject, $field);
         }
+        if (!class_exists(AccessDecision::class) {
+            return $this->userSecurityChecker->isGrantedForUser($user, $attribute, $subject);
+        }
+        $accessDecision ??= new AccessDecision();
 
-        return $this->userSecurityChecker->isGrantedForUser($user, $attribute, $subject);
+        return $accessDecision->result = $this->userSecurityChecker->isGrantedForUser($user, $attribute, $subject, $accessDecision);
     }
 
     public function getImpersonateExitUrl(?string $exitTo = null): string

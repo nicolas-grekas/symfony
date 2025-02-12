@@ -11,8 +11,6 @@
 
 namespace Symfony\Component\Security\Core\Authorization\Strategy;
 
-use Symfony\Component\Security\Core\Authorization\AccessDecision;
-use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
 /**
@@ -25,39 +23,26 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Alexander M. Turek <me@derrabus.de>
  */
-final class PriorityStrategy implements AccessDecisionVoteObjectStrategyInterface, \Stringable
+final class PriorityStrategy implements AccessDecisionStrategyInterface, \Stringable
 {
     public function __construct(
         private bool $allowIfAllAbstainDecisions = false,
     ) {
     }
 
-    public function decide(\Traversable $results, ?AccessDecision &$accessDecision = null): bool
+    public function decide(\Traversable $results): bool
     {
-        $allVotes = [];
-
         foreach ($results as $result) {
-            $allVotes[] = $result;
-            if ($result instanceof VoteInterface) {
-                $result = $result->getAccess();
-            }
-
             if (VoterInterface::ACCESS_GRANTED === $result) {
-                $accessDecision = new AccessDecision(true, $allVotes);
-
-                return $accessDecision->getAccess();
+                return true;
             }
 
             if (VoterInterface::ACCESS_DENIED === $result) {
-                $accessDecision = new AccessDecision(false, $allVotes);
-
-                return $accessDecision->getAccess();
+                return false;
             }
         }
 
-        $accessDecision = new AccessDecision($this->allowIfAllAbstainDecisions, $allVotes);
-
-        return $accessDecision->getAccess();
+        return $this->allowIfAllAbstainDecisions;
     }
 
     public function __toString(): string

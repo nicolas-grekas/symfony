@@ -73,15 +73,9 @@ class AccessListener extends AbstractListener
         }
 
         $token = $this->tokenStorage->getToken() ?? new NullToken();
+        $accessDecision = new AccessDecision(true);
 
-        $accessDecision = null;
-        $decision = $this->accessDecisionManager->decide($token, $attributes, $request, true, $accessDecision);
-
-        if(! $accessDecision instanceof AccessDecision) {
-            $accessDecision = new AccessDecision($decision);
-        }
-
-        if ($accessDecision->isDenied()) {
+        if (!$accessDecision->isGranted = $this->accessDecisionManager->decide($token, $attributes, $request, $accessDecision)) {
             throw $this->createAccessDeniedException($request, $attributes, $accessDecision);
         }
     }

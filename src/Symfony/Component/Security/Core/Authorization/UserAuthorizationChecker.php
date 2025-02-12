@@ -24,8 +24,10 @@ final class UserAuthorizationChecker implements UserAuthorizationCheckerInterfac
     ) {
     }
 
-    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null): bool
+    public function isGrantedForUser(UserInterface $user, mixed $attribute, mixed $subject = null, ?AccessDecision $accessDecision = null): bool
     {
-        return $this->accessDecisionManager->decide(new UserAuthorizationCheckerToken($user), [$attribute], $subject);
+        $accessDecision ??= new AccessDecision();
+
+        return $accessDecision->isGranted = $this->accessDecisionManager->decide(new UserAuthorizationCheckerToken($user), [$attribute], $subject, $accessDecision);
     }
 }

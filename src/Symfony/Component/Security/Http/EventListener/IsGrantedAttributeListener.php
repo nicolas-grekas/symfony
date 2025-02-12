@@ -59,11 +59,9 @@ class IsGrantedAttributeListener implements EventSubscriberInterface
                     $subject = $this->getIsGrantedSubject($subjectRef, $request, $arguments);
                 }
             }
+            $accessDecision = new AccessDecision();
 
-            $accessDecision = null;
-            $decision = $this->authChecker->isGranted($attribute->attribute, $subject, $accessDecision);
-
-            if (!$decision) {
+            if (!$accessDecision->isGranted = $this->authChecker->isGranted($attribute->attribute, $subject, $accessDecision)) {
                 $message = $attribute->message ?: \sprintf('Access Denied by #[IsGranted(%s)] on controller', $this->getIsGrantedString($attribute));
 
                 if ($statusCode = $attribute->statusCode) {
@@ -73,7 +71,7 @@ class IsGrantedAttributeListener implements EventSubscriberInterface
                 $accessDeniedException = new AccessDeniedException($message, code: $attribute->exceptionCode ?? 403);
                 $accessDeniedException->setAttributes($attribute->attribute);
                 $accessDeniedException->setSubject($subject);
-                $accessDeniedException->setAccessDecision($accessDecision ?? new AccessDecision($decision));
+                $accessDeniedException->setAccessDecision($accessDecision);
 
                 throw $accessDeniedException;
             }

@@ -13,7 +13,6 @@ namespace Symfony\Component\Security\Core\Authorization;
 
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Strategy\AccessDecisionStrategyInterface;
-use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
 /**
@@ -46,7 +45,7 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
         }
     }
 
-    public function decide(TokenInterface $token, array $attributes, mixed $object = null, bool $allowMultipleAttributes = false, ?AccessDecision &$accessDecision = null): bool
+    public function decide(TokenInterface $token, array $attributes, mixed $object = null, ?AccessDecision $accessDecision = null): bool
     {
         $currentDecisionLog = [
             'attributes' => $attributes,
@@ -56,7 +55,8 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
 
         $this->currentLog[] = &$currentDecisionLog;
 
-        $result = $this->manager->decide($token, $attributes, $object, $allowMultipleAttributes, $accessDecision);
+        $accessDecision ??= new AccessDecision();
+        $accessDecision->isGranted = $result = $this->manager->decide($token, $attributes, $object, $accessDecision);
 
         $currentDecisionLog['result'] = $result;
 
@@ -65,19 +65,14 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
         return $result;
     }
 
-    /**
-     * Adds voter vote and class to the voter details.
-     *
-     * @param array             $attributes attributes used for the vote
-     * @param VoteInterface|int $vote       vote of the voter
-     */
-    public function addVoterVote(VoterInterface $voter, array $attributes, VoteInterface|int $vote): void
+    public function addVoterVote(VoterInterface $voter, array $attributes, int $vote, array $reasons): void
     {
         $currentLogIndex = \count($this->currentLog) - 1;
         $this->currentLog[$currentLogIndex]['voterDetails'][] = [
             'voter' => $voter,
             'attributes' => $attributes,
             'vote' => $vote,
+            'reasons' => $reasons,
         ];
     }
 

@@ -205,8 +205,6 @@ abstract class AbstractController implements ServiceSubscriberInterface
 
     /**
      * Checks if the attribute is granted against the current authentication token and optionally supplied subject.
-     *
-     * @throws \LogicException
      */
     protected function getAccessDecision(mixed $attribute, mixed $subject = null): AccessDecision
     {
@@ -214,10 +212,10 @@ abstract class AbstractController implements ServiceSubscriberInterface
             throw new \LogicException('The SecurityBundle is not registered in your application. Try running "composer require symfony/security-bundle".');
         }
 
-        $accessDecision = null;
-        $decision = $this->container->get('security.authorization_checker')->isGranted($attribute, $subject, $accessDecision);
+        $accessDecision = new AccessDecision();
+        $accessDecision->isGranted = $this->container->get('security.authorization_checker')->isGranted($attribute, $subject, $accessDecision);
 
-        return null === $accessDecision ? new AccessDecision($decision) : $accessDecision;
+        return $accessDecision;
     }
 
     /**
@@ -228,13 +226,21 @@ abstract class AbstractController implements ServiceSubscriberInterface
      */
     protected function denyAccessUnlessGranted(mixed $attribute, mixed $subject = null, string $message = 'Access Denied.'): void
     {
-        $decision = $this->getAccessDecision($attribute, $subject);
+        if (class_exists(AccessDecision::class)) {
+            $accessDecision = $this->getAccessDecision($attribute, $subject);
+            $isGranted = $accessDecision->isGranted;
+        } else {
+            $accessDecision = null;
+            $isGranted = $this->isGranted($attribute, $subject);
+        }
 
-        if ($decision->isDenied()) {
+        if (!$isGranted) {
             $exception = $this->createAccessDeniedException($message);
             $exception->setAttributes([$attribute]);
             $exception->setSubject($subject);
-            $exception->setAccessDecision($decision);
+            if ($accessDecision) {
+                $exception->setAccessDecision($accessDecision);
+            }
             throw $exception;
         }
     }

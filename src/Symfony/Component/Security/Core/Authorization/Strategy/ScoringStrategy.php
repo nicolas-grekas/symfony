@@ -11,18 +11,20 @@
 
 namespace Symfony\Component\Security\Core\Authorization\Strategy;
 
+use Symfony\Component\Security\Core\Authorization\AccessDecision;
+use Symfony\Component\Security\Core\Authorization\Voter\Vote;
+use Symfony\Component\Security\Core\Authorization\Voter\VoteInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
 /**
- * Grants access if only grant (or abstain) votes were received.
+ * Grants access if the sum of vote results is greater than 0.
  *
  * If all voters abstained from voting, the decision will be based on the
  * allowIfAllAbstainDecisions property value (defaults to false).
  *
- * @author Fabien Potencier <fabien@symfony.com>
- * @author Alexander M. Turek <me@derrabus.de>
+ * @author Roman JOLY <eltharin18@outlook.fr>
  */
-final class UnanimousStrategy implements AccessDecisionStrategyInterface, \Stringable
+final class ScoringStrategy implements AccessDecisionStrategyInterface, \Stringable
 {
     public function __construct(
         private bool $allowIfAllAbstainDecisions = false,
@@ -31,20 +33,18 @@ final class UnanimousStrategy implements AccessDecisionStrategyInterface, \Strin
 
     public function decide(\Traversable $results): bool
     {
-        $grant = 0;
-        foreach ($results as $result) {
-            if (VoterInterface::ACCESS_DENIED === $result) {
-                return false;
-            }
+        $score = 0;
 
-            if (VoterInterface::ACCESS_GRANTED === $result) {
-                ++$grant;
-            }
+        foreach ($results as $result) {
+            $score += $result;
         }
 
-        // no deny votes
-        if ($grant > 0) {
+        if ($score > 0) {
             return true;
+        }
+
+        if ($score < 0) {
+            return false;
         }
 
         return $this->allowIfAllAbstainDecisions;
@@ -52,6 +52,6 @@ final class UnanimousStrategy implements AccessDecisionStrategyInterface, \Strin
 
     public function __toString(): string
     {
-        return 'unanimous';
+        return 'scoring';
     }
 }
