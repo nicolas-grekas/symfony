@@ -1,0 +1,49 @@
+name: CS fixer
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  verify:
+    name: Fabbot
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          PR_NUMBER=61203
+          REPO_OWNER=symfony
+          REPO_NAME=symfony
+
+          mkdir orig
+
+          gh api \
+              "/repos/$REPO_OWNER/$REPO_NAME/contents/.php-cs-fixer.dist.php?ref=$PR_HEAD_SHA" \
+              -H "Accept: application/vnd.github.v3.raw" \
+              --silent > orig/.php-cs-fixer.dist.php || rm orig/.php-cs-fixer.dist.php &
+
+          gh api --paginate "/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/files" \
+            | jq -c '.[] | select(.status != "removed") | {filename, sha}' \
+            | while read -r FILE_OBJ; do
+              FILENAME=$(echo "$FILE_OBJ" | jq -r '.filename')
+              FILE_SHA=$(echo "$FILE_OBJ" | jq -r '.sha')
+
+              mkdir -p "orig/$(dirname "$FILENAME")"
+              curl -s -L \
+                -H "Accept: application/vnd.github.raw" \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/git/blobs/$FILE_SHA" > "orig/$FILENAME" &
+            done
+
+          wait
+          tree -a orig
