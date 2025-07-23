@@ -21,16 +21,13 @@ jobs:
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
 
-          PR_NUMBER=61203
-          REPO_OWNER=symfony
-          REPO_NAME=symfony
+          composer global require -q friendsofphp/php-cs-fixer &
 
-          mkdir orig
+          mkdir a
 
-          gh api \
+          gh api -H "Accept: application/vnd.github.v3.raw" \
               "/repos/$REPO_OWNER/$REPO_NAME/contents/.php-cs-fixer.dist.php?ref=$PR_HEAD_SHA" \
-              -H "Accept: application/vnd.github.v3.raw" \
-              --silent > orig/.php-cs-fixer.dist.php || rm orig/.php-cs-fixer.dist.php &
+              > a/.php-cs-fixer.dist.php || rm a/.php-cs-fixer.dist.php &
 
           gh api --paginate "/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/files" \
             | jq -c '.[] | select(.status != "removed") | {filename, sha}' \
@@ -38,12 +35,27 @@ jobs:
               FILENAME=$(echo "$FILE_OBJ" | jq -r '.filename')
               FILE_SHA=$(echo "$FILE_OBJ" | jq -r '.sha')
 
-              mkdir -p "orig/$(dirname "$FILENAME")"
-              curl -s -L \
-                -H "Accept: application/vnd.github.raw" \
-                -H "Authorization: Bearer $GH_TOKEN" \
-                "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/git/blobs/$FILE_SHA" > "orig/$FILENAME" &
+              mkdir -p "a/$(dirname "$FILENAME")"
+              gh api -H "Accept: application/vnd.github.raw" \
+                "/repos/$REPO_OWNER/$REPO_NAME/git/blobs/$FILE_SHA" \
+                > "a/$FILENAME" &
             done
 
           wait
-          tree -a orig
+
+      - name: Check code style
+        run: |
+          cp -a a b && cd b
+          ~/.composer/vendor/bin/php-cs-fixer fix --using-cache no --show-progress none
+          cd ..
+
+          if diff -q -r --no-dereference a/ b/ >/dev/null; then
+            echo "::notice::PHP-CS-Fixer found no style issues. Code is clean! 🎉"
+          else
+            echo "::error::PHP-CS-Fixer found style issues. Please apply the patch below."
+            echo -e "\n \ngit apply - <<'EOF_PATCH'"
+            diff -u -p -r --no-dereference --color=always a/ b/ || true
+            echo -e "EOF_PATCH\n \n"
+            echo "Then commit the changes and push to your PR branch."
+            exit 1
+          fi
