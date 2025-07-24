@@ -92,7 +92,7 @@ class UniqueEntity extends Constraint
     }
 
     /**
-     * @deprecated since Symfony 7.4
+     * @deprecated since 7.4
      */
     public function getRequiredOptions(): array
     {
