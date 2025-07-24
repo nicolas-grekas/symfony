@@ -16,7 +16,7 @@
         }
     ],
     "provide": {
-        "php-http/async-client-implementation": "*",
+        "php-http/async-client-implementation": "*"
         "php-http/client-implementation": "*",
         "psr/cache-implementation": "2.0|3.0",
         "psr/clock-implementation": "1.0",

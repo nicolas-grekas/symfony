@@ -156,13 +156,23 @@ jobs:
         run: |
           rm -rf b && cp -a a b && cd b
           find . -name '*.yml' -o -name '*.yaml' \
-            | while read -r FILE; do
-              php -r '
-                use Symfony\Component\Yaml\{Parser,Yaml};
-                require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
-                try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
-                catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+            | while read -r FILE; do php -r '
+              use Symfony\Component\Yaml\{Parser,Yaml};
+              require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
+              try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
+              catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+            ' "$FILE"
+            done
+
+      - name: Check JSON files
+        if: always()
+        run: |
+          rm -rf b && cp -a a b && cd b
+          find . -name '*.json' \
+            | while read -r FILE; do php -r '
+              use Seld\JsonLint\JsonParser;
+              require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
+              try { (new JsonParser())->parse(file_get_contents($argv[1])); }
+              catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
               ' "$FILE"
             done
-          cd ..
-          echo "::notice::All YAML files are valid. Good job! 🎉"
