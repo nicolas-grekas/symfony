@@ -22,7 +22,7 @@ jobs:
           REPO_NAME="${{ github.event.repository.name }}"
 
           pip install codespell &
-          composer global require -q friendsofphp/php-cs-fixer &
+          composer global require -q friendsofphp/php-cs-fixer seld/jsonlint symfony/yaml &
 
           mkdir a
 
@@ -150,3 +150,19 @@ jobs:
             echo "::error::Don't use conventional commits in PR titles. We'll add the appropriate prefix while merging. Use the component name instead, e.g., [Component] Description."
             exit 1
           fi
+
+      - name: Check YAML files
+        if: always()
+        run: |
+          rm -rf b && cp -a a b && cd b
+          find . -name '*.yml' -o -name '*.yaml' \
+            | while read -r FILE; do
+              php -r '
+                use Symfony\Component\Yaml\{Parser,Yaml};
+                require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
+                try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
+                catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+              ' "$FILE"
+            done
+          cd ..
+          echo "::notice::All YAML files are valid. Good job! 🎉"
