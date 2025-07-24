@@ -53,7 +53,7 @@ jobs:
 
           if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found style issues. Please apply the patch below."
-            echo -e "\n \ngit apply - <<'EOF_PATCH'"
+            echo -e "\n \n git apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
@@ -69,7 +69,7 @@ jobs:
 
           if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found typos. Please apply the patch below."
-            echo -e "\n \ngit apply - <<'EOF_PATCH'"
+            echo -e "\n \n git apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
@@ -98,7 +98,7 @@ jobs:
 
           if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::Test case methods should not have a return type. Please apply the patch below."
-            echo -e "\n \ngit apply - <<'EOF_PATCH'"
+            echo -e "\n \n git apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
@@ -118,7 +118,7 @@ jobs:
 
           if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::@deprecated annotations should mention Symfony. Please apply the patch below."
-            echo -e "\n \ngit apply - <<'EOF_PATCH'"
+            echo -e "\n \n git apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."

@@ -1051,7 +1051,7 @@ class Request
     /**
      * Checks whether the request is secure or not.
      *
-     * This metod can read the client protocol from the "X-Forwarded-Proto" header
+     * This method can read the client protocol from the "X-Forwarded-Proto" header
      * when trusted proxies were set via "setTrustedProxies()".
      *
      * The "X-Forwarded-Proto" header must contain the protocol: "https" or "http".
