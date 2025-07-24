@@ -51,9 +51,7 @@ jobs:
           ~/.composer/vendor/bin/php-cs-fixer fix --using-cache no --show-progress none
           cd ..
 
-          if diff -q -r --no-dereference a/ b/ >/dev/null; then
-            echo "::notice::PHP-CS-Fixer found no style issues. Code is clean! 🎉"
-          else
+          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found style issues. Please apply the patch below."
             echo -e "\n \ngit apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
@@ -69,9 +67,7 @@ jobs:
           codespell -L invokable --check-filenames -w || true
           cd ..
 
-          if diff -q -r --no-dereference a/ b/ >/dev/null; then
-            echo "::notice::codespell found no typos issues. Code is clean! 🎉"
-          else
+          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found typos. Please apply the patch below."
             echo -e "\n \ngit apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
@@ -88,8 +84,6 @@ jobs:
             | jq -r '.[].parents | length > 1' | grep true && {
               echo "::error::Merge commits are not allowed in pull requests. Please rebase your branch."
               exit 1
-            } || {
-              echo "::notice::No merge commits found. Good job! 🎉"
             }
 
       - name: Check test-case methods
@@ -102,9 +96,7 @@ jobs:
             done
           cd ..
 
-          if diff -q -r --no-dereference a/ b/ >/dev/null; then
-            echo "::notice::Test case methods are correctly formatted. Good job! 🎉"
-          else
+          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::Test case methods should not have a return type. Please apply the patch below."
             echo -e "\n \ngit apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
@@ -124,9 +116,7 @@ jobs:
             done
           cd ..
 
-          if diff -q -r --no-dereference a/ b/ >/dev/null; then
-            echo "::notice::@deprecated annotations are correctly formatted. Good job! 🎉"
-          else
+          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::@deprecated annotations should mention Symfony. Please apply the patch below."
             echo -e "\n \ngit apply - <<'EOF_PATCH'"
             diff -u -p -r --no-dereference --color=always a/ b/ || true
