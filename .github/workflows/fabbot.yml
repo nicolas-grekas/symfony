@@ -80,3 +80,15 @@ jobs:
             echo "Then commit the changes and push to your PR branch."
             exit 1
           fi
+
+      - name: Check for merge commits
+        if: always()
+        run: |
+          gh api -H "Accept: application/vnd.github.v3+json" \
+            "/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/${{ github.event.pull_request.number }}/commits" \
+            | jq -r '.[].parents | length > 1' | grep true && {
+              echo "::error::Merge commits are not allowed in pull requests. Please rebase your branch."
+              exit 1
+            } || {
+              echo "::notice::No merge commits found. Good job! 🎉"
+            }

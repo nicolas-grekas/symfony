@@ -48,7 +48,7 @@ class RequestTest extends TestCase
         $this->assertEquals('bar', $request->headers->get('FOO'), '->initialize() takes an array of HTTP headers as its sixth argument');
     }
 
-    public function testGetLocale()
+    public function testGetLocale(): void
     {
         $request = new Request();
         $request->setLocale('pl');
