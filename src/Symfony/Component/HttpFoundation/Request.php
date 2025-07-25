@@ -1100,7 +1100,7 @@ class Request
             }
             $this->isHostValid = false;
 
-            throw new SuspiciousOperationException(\sprintf('Invalid Host "%s".', $host));
+            throw new SuspiciousOperationException(\sprintf('Invalid Host %s', $host));
         }
 
         if (\count(self::$trustedHostPatterns) > 0) {
