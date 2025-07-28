@@ -86,7 +86,8 @@ jobs:
           gh api -H "Accept: application/vnd.github.v3+json" \
             "/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/${{ github.event.pull_request.number }}/commits" \
             | jq -r '.[].parents | length > 1' | grep true > /dev/null && {
-              echo "::error::Merge commits are not allowed in pull requests. Please rebase your branch."
+              echo "::error::Merge commits are not allowed in pull requests."
+              echo "Please rebase your branch."
               exit 1
             }
 
@@ -139,16 +140,15 @@ jobs:
           PR_BODY="${{ github.event.pull_request.body }}"
 
           if [[ ! "$PR_BODY" =~ \|\ License[\ ]+\|\ MIT ]]; then
-            echo ::error::
-            echo "::error::You must add the standard Symfony PR contribution header in the description (see https://symfony.com/doc/current/contributing/code/patches.html#make-a-pull-request)."
-            echo ::error::
+            echo "::error::You must add the standard contribution header in the PR description"
+            echo "See https://symfony.com/doc/current/contributing/code/patches.html#make-a-pull-request"
             exit 1
           fi
 
           if [[ "$PR_TITLE" =~ (feat|fix|docs|style|refactor|perf|test|chore|revert|build|ci|types?|wip)[:()] ]]; then
-            echo ::error::
-            echo "::error::Don't use conventional commits in PR titles. We'll add the appropriate prefix while merging. Use the component name instead, e.g., [Component] Description."
-            echo ::error::
+            echo "::error::Don't use conventional commits in PR titles."
+            echo "We'll add the appropriate prefix while merging."
+            echo "Use the component name instead, e.g., [Component] Description."
             exit 1
           fi
 
@@ -162,7 +162,7 @@ jobs:
               use Symfony\Component\Yaml\{Parser,Yaml};
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
-              catch (Exception $e) { echo "::error::\n::error:: in $argv[1]: {$e->getMessage()}\n::error::\n"; exit(1); }
+              catch (Exception $e) { echo "::error::in $argv[1]:\n{$e->getMessage()}\n::"; exit(1); }
             ' "$FILE"
             done
           cd ..
@@ -177,7 +177,7 @@ jobs:
               use Seld\JsonLint\JsonParser;
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new JsonParser())->parse(file_get_contents($argv[1])); }
-              catch (Exception $e) { echo "::error::\n::error:: in $argv[1]: {$e->getMessage()}\n::error::\n"; exit(1); }
+              catch (Exception $e) { echo "::error:: in $argv[1]: {$e->getMessage()}\n"; exit(1); }
               ' "$FILE"
             done
           cd ..
