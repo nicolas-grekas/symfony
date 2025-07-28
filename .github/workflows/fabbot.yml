@@ -1,5 +1,3 @@
-name: Fabbot
-
 on:
   pull_request:
 
@@ -8,7 +6,7 @@ permissions:
 
 jobs:
   call-fabbot:
-    name: Symfony
+    name: Fabbot
     uses: ./.github/workflows/callable-fabbot.yml
     with:
       package: Symfony
