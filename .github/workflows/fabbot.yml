@@ -16,6 +16,7 @@ jobs:
     steps:
       - name: Checkout code
         run: |
+          # Check out patched files using the REST API and install dependencies concurrently
           PR_NUMBER="${{ github.event.pull_request.number }}"
           PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           REPO_OWNER="${{ github.repository_owner }}"
@@ -47,14 +48,15 @@ jobs:
       - name: Check code style
         if: always()
         run: |
+          # Run PHP-CS-Fixer
           cp -a a b && cd b
           ~/.composer/vendor/bin/php-cs-fixer fix --using-cache no --show-progress none
           cd ..
 
-          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
+          if ! diff -qr --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found style issues. Please apply the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -uprc2 --no-dereference --color=always a/ b/ || true
+            diff -pru2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
@@ -63,14 +65,15 @@ jobs:
       - name: Check for common typos
         if: always()
         run: |
+          # Run codespell
           rm -rf b && cp -a a b && cd b
           codespell -L invokable --check-filenames -w || true
           cd ..
 
-          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
+          if ! diff -qr --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found typos. Please apply the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -uprc2 --no-dereference --color=always a/ b/ || true
+            diff -pru2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
@@ -79,9 +82,10 @@ jobs:
       - name: Check for merge commits
         if: always()
         run: |
+          # If a PR contains merge commits, fail the job
           gh api -H "Accept: application/vnd.github.v3+json" \
             "/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/${{ github.event.pull_request.number }}/commits" \
-            | jq -r '.[].parents | length > 1' | grep true && {
+            | jq -r '.[].parents | length > 1' | grep true > /dev/null && {
               echo "::error::Merge commits are not allowed in pull requests. Please rebase your branch."
               exit 1
             }
@@ -89,6 +93,7 @@ jobs:
       - name: Check test-case methods
         if: always()
         run: |
+          # Test method names should not have a return type
           rm -rf b && cp -a a b && cd b
           find -wholename '**/Tests/**.php' \
             | while read -r FILE; do
@@ -96,10 +101,10 @@ jobs:
             done
           cd ..
 
-          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
+          if ! diff -qr --no-dereference a/ b/ >/dev/null; then
             echo "::error::Test case methods should not have a return type. Please apply the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -u -p -r --no-dereference --color=always a/ b/ || true
+            diff -pru2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
@@ -109,6 +114,7 @@ jobs:
       - name: Check @deprecated annotations
         if: always()
         run: |
+          # @deprecated annotations should mention Symfony
           rm -rf b && cp -a a b && cd b
           find -name '*.php' \
             | while read -r FILE; do
@@ -116,10 +122,10 @@ jobs:
             done
           cd ..
 
-          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
+          if ! diff -qr --no-dereference a/ b/ >/dev/null; then
             echo "::error::@deprecated annotations should mention Symfony. Please apply the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -u -p -r --no-dereference --color=always a/ b/ || true
+            diff -pru2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
@@ -128,29 +134,35 @@ jobs:
       - name: Check PR header
         if: always()
         run: |
+          # Check if the PR title and body follow the Symfony contribution guidelines
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_BODY="${{ github.event.pull_request.body }}"
 
           if [[ ! "$PR_BODY" =~ \|\ License[\ ]+\|\ MIT ]]; then
+            echo ::error::
             echo "::error::You must add the standard Symfony PR contribution header in the description (see https://symfony.com/doc/current/contributing/code/patches.html#make-a-pull-request)."
+            echo ::error::
             exit 1
           fi
 
-          if [[ "$PR_TITLE" =~ (feat|fix|docs|style|refactor|perf|test|chore|revert|build|ci|types?|wip): ]]; then
+          if [[ "$PR_TITLE" =~ (feat|fix|docs|style|refactor|perf|test|chore|revert|build|ci|types?|wip)[:()] ]]; then
+            echo ::error::
             echo "::error::Don't use conventional commits in PR titles. We'll add the appropriate prefix while merging. Use the component name instead, e.g., [Component] Description."
+            echo ::error::
             exit 1
           fi
 
       - name: Check YAML files
         if: always()
         run: |
+          # Check YAML files for syntax errors
           rm -rf b && cp -a a b && cd b
           find . -name '*.yml' -o -name '*.yaml' \
             | while read -r FILE; do php -r '
               use Symfony\Component\Yaml\{Parser,Yaml};
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
-              catch (Exception $e) { echo "::error:: in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+              catch (Exception $e) { echo "::error::\n::error:: in $argv[1]: {$e->getMessage()}\n::error::\n"; exit(1); }
             ' "$FILE"
             done
           cd ..
@@ -158,13 +170,14 @@ jobs:
       - name: Check JSON files
         if: always()
         run: |
+          # Check JSON files for syntax errors
           rm -rf b && cp -a a b && cd b
           find . -name '*.json' \
             | while read -r FILE; do php -r '
               use Seld\JsonLint\JsonParser;
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new JsonParser())->parse(file_get_contents($argv[1])); }
-              catch (Exception $e) { echo "::error:: in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+              catch (Exception $e) { echo "::error::\n::error:: in $argv[1]: {$e->getMessage()}\n::error::\n"; exit(1); }
               ' "$FILE"
             done
           cd ..
@@ -172,6 +185,7 @@ jobs:
       - name: Check exception messages
         if: always()
         run: |
+          # Placeholders should be enclosed in double-quotes and messages should end with a dot
           rm -rf b && cp -a a b && cd b
           find -name '*.php' \
             | while read -r FILE; do php -r "$(cat <<'EOF'
@@ -213,10 +227,10 @@ jobs:
             done
           cd ..
 
-          if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
+          if ! diff -qr --no-dereference a/ b/ >/dev/null; then
             echo "::error::Some exception messages might need a tweak. Please consider the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -u -p -r --no-dereference --color=always a/ b/ || true
+            diff -pru2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
