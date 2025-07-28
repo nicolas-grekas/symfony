@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   call-fabbot:
-    name: Fabbot
+    name: CS
     uses: ./.github/workflows/callable-fabbot.yml
     with:
       package: Symfony
