@@ -70,7 +70,7 @@ jobs:
           if ! diff -q -r --no-dereference a/ b/ >/dev/null; then
             echo "::error::PHP-CS-Fixer found typos. Please apply the patch below."
             echo -e "\n \n git apply - <<'EOF_PATCH'"
-            diff -u -p -r --no-dereference --color=always a/ b/ || true
+            diff -uprc2 --no-dereference --color=always a/ b/ || true
             echo -e "EOF_PATCH\n \n"
             echo "Then commit the changes and push to your PR branch."
             exit 1
@@ -150,7 +150,7 @@ jobs:
               use Symfony\Component\Yaml\{Parser,Yaml};
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
-              catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+              catch (Exception $e) { echo "::error:: in $argv[1]: {$e->getMessage()}\n"; exit(1); }
             ' "$FILE"
             done
           cd ..
@@ -164,7 +164,7 @@ jobs:
               use Seld\JsonLint\JsonParser;
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new JsonParser())->parse(file_get_contents($argv[1])); }
-              catch (Exception $e) { echo "Error in $argv[1]: {$e->getMessage()}\n"; exit(1); }
+              catch (Exception $e) { echo "::error:: in $argv[1]: {$e->getMessage()}\n"; exit(1); }
               ' "$FILE"
             done
           cd ..
