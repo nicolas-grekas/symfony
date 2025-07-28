@@ -90,7 +90,7 @@ jobs:
               echo "::error::Merge commits are not allowed in pull requests."
               echo "Please rebase your branch."
               exit 1
-            }
+            } || true
 
       - name: Check test-case methods
         if: always()
