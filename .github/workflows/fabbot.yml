@@ -6,11 +6,9 @@ on:
 permissions:
   contents: read
 
-env:
-  GH_TOKEN: ${{ github.token }}
-
 jobs:
   call-fabbot:
+    name: Symfony
     uses: ./.github/workflows/callable-fabbot.yml
     with:
       package: Symfony
