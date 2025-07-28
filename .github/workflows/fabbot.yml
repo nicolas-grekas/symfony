@@ -1,4 +1,4 @@
-name: CS fixer
+name: Fabbot
 
 on:
   pull_request:
@@ -10,8 +10,8 @@ env:
   GH_TOKEN: ${{ github.token }}
 
 jobs:
-  verify:
-    name: Fabbot
+  check:
+    name: Checks
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
@@ -162,7 +162,7 @@ jobs:
               use Symfony\Component\Yaml\{Parser,Yaml};
               require $_SERVER["HOME"]."/.composer/vendor/autoload.php";
               try { (new Parser())->parse(file_get_contents($argv[1]), Yaml::PARSE_CUSTOM_TAGS); }
-              catch (Exception $e) { echo "::error::in $argv[1]:\n{$e->getMessage()}\n::"; exit(1); }
+              catch (Exception $e) { echo "::error::in $argv[1]:\n{$e->getMessage()}\n"; exit(1); }
             ' "$FILE"
             done
           cd ..
@@ -235,3 +235,7 @@ jobs:
             echo "Then commit the changes and push to your PR branch."
             exit 1
           fi
+
+      - name: 🧠 Fabbot can generate false-positives. Cherry-pick as fits 🍒. Reviewers will help.
+        if: always()
+        run: exit 0
