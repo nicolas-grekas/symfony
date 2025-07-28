@@ -1,5 +1,3 @@
-name: Fabbot
-
 on:
   workflow_call:
     inputs:
