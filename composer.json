@@ -145,6 +145,7 @@
         "league/html-to-markdown": "^5.0",
         "league/uri": "^6.5|^7.0",
         "masterminds/html5": "^2.7.2",
+        "mck89/peast": "^1.17",
         "monolog/monolog": "^3.0",
         "nikic/php-parser": "^5.0",
         "nyholm/psr7": "^1.0",

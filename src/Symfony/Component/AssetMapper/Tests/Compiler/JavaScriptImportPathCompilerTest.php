@@ -119,7 +119,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'dynamic_simple_multiline' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/other.js' => ['lazy' => true, 'asset' => 'other.js', 'add' => true]],
@@ -235,7 +235,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'single_line_comment_at_start_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 // import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -243,7 +243,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'single_line_comment_with_whitespace_before_is_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                  // import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -251,7 +251,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'single_line_comment_with_more_text_before_import_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 // this is not going to be parsed import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -259,7 +259,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'single_line_comment_not_at_start_is_parsed' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 console.log('// I am not really a comment'); import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/other.js' => ['lazy' => true, 'asset' => 'other.js', 'add' => true]],
@@ -267,7 +267,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'multi_line_comment_with_start_and_end_before_import_is_found' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 /* comment */ import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/other.js' => ['lazy' => true, 'asset' => 'other.js', 'add' => true]],
@@ -275,7 +275,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'multi_line_comment_with_import_between_start_and_end_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                     /* comment import("./other.js"); */
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -283,7 +283,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'multi_line_comment_with_no_end_found_eventually_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                     /* comment import("./other.js");
                     and more
                     */
@@ -293,7 +293,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'multi_line_comment_with_text_before_is_parsed' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                     console.log('/* not a comment'); import("./other.js");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/other.js' => ['lazy' => true, 'asset' => 'other.js', 'add' => true]],
@@ -301,7 +301,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_in_double_quoted_string_is_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 console.log("import('./foo.js')");
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -309,7 +309,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_in_double_quoted_string_with_escaped_quote_is_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 console.log(" foo \" import('./foo.js')");
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -317,7 +317,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_in_single_quoted_string_is_ignored' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 console.log('import("./foo.js")');
                 EOF,
             'expectedJavaScriptImports' => [],
@@ -325,7 +325,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_after_a_string_is_parsed' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 console.log("import('./other.js')"); import("./foo.js");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/foo.js' => ['lazy' => true, 'asset' => 'foo.js', 'add' => true]],
@@ -333,7 +333,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_before_a_string_is_parsed' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 import("./other.js"); console.log("import('./foo.js')");
                 EOF,
             'expectedJavaScriptImports' => ['/assets/other.js' => ['lazy' => true, 'asset' => 'other.js', 'add' => true]],
@@ -341,7 +341,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
 
         yield 'import_before_and_after_a_string_is_parsed' => [
             'input' => <<<EOF
-                const fun;
+                let fun;
                 import("./other.js"); console.log("import('./foo.js')"); import("./subdir/foo.js");
                 EOF,
             'expectedJavaScriptImports' => [
@@ -664,7 +664,7 @@ class JavaScriptImportPathCompilerTest extends TestCase
         $assetMapper = $this->createMock(AssetMapperInterface::class);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Failed to compile JavaScript import paths in "/project/assets/app.js". Error: "Backtrack limit exhausted".');
+        $this->expectExceptionMessage('Failed to parse JavaScript in "/project/assets/app.js".');
 
         $limit = \ini_get('pcre.backtrack_limit');
         ini_set('pcre.backtrack_limit', 10);
