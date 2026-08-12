@@ -95,7 +95,7 @@ final class ProfileTextWriter implements ProfilerStorageInterface
 
     private function dump(Profile $profile): void
     {
-        if (!is_dir($this->directory) && !@mkdir($this->directory, 0777, true) && !is_dir($this->directory)) {
+        if (!is_dir($this->directory) && !@mkdir($this->directory, 0o777, true) && !is_dir($this->directory)) {
             return;
         }
 

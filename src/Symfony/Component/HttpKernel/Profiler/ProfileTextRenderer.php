@@ -142,7 +142,9 @@ final class ProfileTextRenderer
 
     private function renderLogs(LoggerDataCollector $collector): string
     {
-        $logs = self::toArray($collector->getLogs());
+        $logs = $collector->getLogs();
+        // a shallow read: converting every entry to plain values costs more than the whole rendering
+        $logs = $logs instanceof Data ? $logs->getValue() : $logs;
 
         if (!$logs) {
             return '';
@@ -152,10 +154,14 @@ final class ProfileTextRenderer
         $kept = [];
         $skipped = 0;
         foreach ($logs as $log) {
-            if ('debug' === ($log['priorityName'] ?? '')) {
+            $priority = $log instanceof Data ? $log['priorityName'] : ($log['priorityName'] ?? null);
+            $priority = $priority instanceof Data ? $priority->getValue() : $priority;
+
+            if ('debug' === $priority) {
                 ++$skipped;
             } elseif (\count($kept) < $this->maxLogs) {
-                $kept[] = $log;
+                // only the entries actually printed are worth materialising
+                $kept[] = $log instanceof Data ? $log->getValue(true) : $log;
             }
         }
 
