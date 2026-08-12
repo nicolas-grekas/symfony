@@ -16,6 +16,7 @@ use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Component\HttpKernel\Debug\VirtualRequestStack;
 use Symfony\Component\HttpKernel\EventListener\ProfilerListener;
 use Symfony\Component\HttpKernel\Profiler\FileProfilerStorage;
+use Symfony\Component\HttpKernel\Profiler\ProfileTextWriter;
 use Symfony\Component\HttpKernel\Profiler\Profiler;
 use Symfony\Component\HttpKernel\Profiler\ProfilerStateChecker;
 
@@ -29,6 +30,13 @@ return static function (ContainerConfigurator $container) {
 
         ->set('profiler.storage', FileProfilerStorage::class)
             ->args([param('profiler.storage.dsn')])
+
+        ->set('profiler.storage.text_writer', ProfileTextWriter::class)
+            ->decorate('profiler.storage')
+            ->args([
+                service('profiler.storage.text_writer.inner'),
+                param('kernel.build_dir').'/profiles',
+            ])
 
         ->set('profiler_listener', ProfilerListener::class)
             ->args([
