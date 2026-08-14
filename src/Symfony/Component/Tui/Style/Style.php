@@ -453,6 +453,26 @@ final class Style
     }
 
     /**
+     * Creates new style with a radial gradient.
+     *
+     * Clears any background color: the two are mutually exclusive. Requires a
+     * truecolor terminal, see RadialGradient.
+     *
+     * @param RadialGradient|array<Color|string|int> $gradient    Colors array or pre-built gradient object (see RadialGradient::from())
+     * @param float|null                             $cx          Horizontal center in normalized coordinates [0, 1] (0=left, 0.5=center, 1=right)
+     * @param float|null                             $cy          Vertical center in normalized coordinates [0, 1] (0=top, 0.5=center, 1=bottom)
+     * @param float|null                             $aspectRatio Cell height / cell width ratio. Standard terminals use ~2.0. Set to 1.0 for square-pixel rendering.
+     */
+    public function withRadialGradient(RadialGradient|array $gradient, ?float $cx = null, ?float $cy = null, ?float $aspectRatio = null): self
+    {
+        $clone = clone $this;
+        $clone->gradient = RadialGradient::from($gradient, $cx, $cy, $aspectRatio);
+        $clone->backgroundColor = null;
+
+        return $clone;
+    }
+
+    /**
      * Creates new style with foreground color.
      *
      * @param Color|string|int|null $color Color specification:
