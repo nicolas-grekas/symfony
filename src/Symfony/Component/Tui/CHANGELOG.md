@@ -8,6 +8,8 @@ CHANGELOG
  * Add `AbstractWidget::attachChild()` and `AbstractWidget::detachChild()` to wire child widgets
  * Add multi-select support to `SelectListWidget`
  * [BC BREAK] Add `$multiselect` as the third argument of `SelectListWidget::__construct()`, moving `$keybindings` to fourth position
+ * Add `LinearGradient`, `ColorStop` and `Angle`, with `Style::withLinearGradient()`, to paint gradient
+   backgrounds on a truecolor terminal
 
 8.1
 ---

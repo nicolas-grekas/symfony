@@ -12,6 +12,7 @@
 namespace Symfony\Component\Tui\Ansi;
 
 use Symfony\Component\String\UnicodeString;
+use Symfony\Component\Tui\Style\Color;
 use Symfony\Component\Tui\Style\CursorShape;
 
 /**
@@ -542,6 +543,117 @@ final class AnsiUtils
     }
 
     /**
+     * Paint a per-column background layer under a rendered line.
+     *
+     * Walks the ANSI string in a single O(n) pass, injecting a background code
+     * before a visible character only when no explicit background is active at
+     * that point: a background an inner widget set on its own cells wins over
+     * the layer, the way a child background wins over a parent one in CSS.
+     * Adjacent cells sharing a color state the code once.
+     *
+     * The line is painted over its full $width. Columns before $offsetX and
+     * past the last color clamp to the nearest edge of the layer, so a layer
+     * resolved for a content area extends under the border cells around it.
+     *
+     * @param array<int, Color> $colors Layer colors indexed by column
+     */
+    public static function paintBackground(string $line, array $colors, int $width, int $offsetX = 0): string
+    {
+        if (!$colors) {
+            return $line;
+        }
+
+        // Convert once so the walk below reads plain strings; the codes are
+        // memoized on the Color instances, which a gradient reuses across frames
+        $lastCol = \count($colors) - 1;
+        $codes = [];
+        for ($col = 0; $col < $width; ++$col) {
+            $codes[$col] = $colors[max(0, min($col - $offsetX, $lastCol))]->toBackgroundCode();
+        }
+
+        $result = '';
+        $col = 0;
+        $i = 0;
+        $len = \strlen($line);
+        $childBgActive = false;
+        // Last layer code written to the line. Reset whenever a sequence of the
+        // line goes through, since it may change the background behind our back.
+        $lastCode = null;
+
+        while ($i < $len && $col < $width) {
+            $ord = \ord($line[$i]);
+
+            // ANSI escape sequence (CSI: ESC [): pass through, track bg state
+            if (0x1B === $ord && '[' === ($line[$i + 1] ?? '')) {
+                $j = self::endOfCsi($line, $i, $len);
+                $seq = substr($line, $i, $j - $i);
+                $childBgActive = self::setsBackground($seq, $childBgActive);
+                $result .= $seq;
+                $lastCode = null;
+                $i = $j;
+                continue;
+            }
+
+            // Printable ASCII: inject the layer code only when no child bg is active
+            if ($ord >= 0x20 && $ord <= 0x7E) {
+                if (!$childBgActive && $codes[$col] !== $lastCode) {
+                    $result .= $lastCode = $codes[$col];
+                }
+                $result .= $line[$i];
+                ++$col;
+                ++$i;
+                continue;
+            }
+
+            // Multi-byte UTF-8: same logic
+            if ($ord >= 0x80) {
+                $seqLen = match (true) {
+                    ($ord & 0xE0) === 0xC0 => 2,
+                    ($ord & 0xF0) === 0xE0 => 3,
+                    ($ord & 0xF8) === 0xF0 => 4,
+                    default => 1,
+                };
+                $char = substr($line, $i, $seqLen);
+                if (!$childBgActive && $codes[$col] !== $lastCode) {
+                    $result .= $lastCode = $codes[$col];
+                }
+                $result .= $char;
+                $col += self::graphemeWidth($char);
+                $i += $seqLen;
+                continue;
+            }
+
+            ++$i;
+        }
+
+        // Fill the remaining width with layer-colored spaces
+        while ($col < $width) {
+            if ($codes[$col] !== $lastCode) {
+                $result .= $lastCode = $codes[$col];
+            }
+            $result .= ' ';
+            ++$col;
+        }
+
+        // Re-emit the escape sequences left after the last visible cell. When the
+        // line fills the width exactly, the loop above stops on $col and would
+        // otherwise drop the resets a child appended past its last character
+        // (ESC[22m, ESC[39m, ...), leaking its style onto the next line.
+        while ($i < $len) {
+            if (0x1B !== \ord($line[$i]) || '[' !== ($line[$i + 1] ?? '')) {
+                ++$i;
+                continue;
+            }
+
+            $j = self::endOfCsi($line, $i, $len);
+            $result .= substr($line, $i, $j - $i);
+            $i = $j;
+        }
+
+        return $result."\x1b[49m";
+    }
+
+    /**
      * Reapply a background SGR code after reset sequences.
      */
     public static function reapplyBackgroundAfterResets(string $text, string $backgroundCode): string
@@ -652,5 +764,75 @@ final class AnsiUtils
         }
 
         return $result;
+    }
+
+    /**
+     * Return the offset just past the CSI sequence starting at $start.
+     */
+    private static function endOfCsi(string $line, int $start, int $len): int
+    {
+        $j = $start + 2 + strspn($line, self::CSI_PARAM_CHARS, $start + 2);
+        $j += strspn($line, self::CSI_INTERMEDIATE_CHARS, $j);
+
+        // Final byte (0x40-0x7E)
+        if ($j < $len && \ord($line[$j]) >= 0x40 && \ord($line[$j]) <= 0x7E) {
+            ++$j;
+        }
+
+        return $j;
+    }
+
+    /**
+     * Parse a CSI escape sequence to determine the new bg-active state.
+     *
+     * Returns true if the sequence sets a background color, false if it resets
+     * the background, and $current unchanged if it doesn't affect it.
+     */
+    private static function setsBackground(string $seq, bool $current): bool
+    {
+        // Only process CSI sequences (ESC [)
+        if (\strlen($seq) < 3 || "\x1b[" !== substr($seq, 0, 2)) {
+            return $current;
+        }
+
+        // Parameter string is between [ and the final byte
+        if ('' === $params = substr($seq, 2, -1)) {
+            return false; // bare ESC [ m = SGR 0 = full reset
+        }
+
+        $state = $current;
+        $parts = explode(';', $params);
+        $count = \count($parts);
+        $idx = 0;
+
+        while ($idx < $count) {
+            $n = (int) $parts[$idx];
+
+            if (38 === $n || 48 === $n || 58 === $n) {
+                // Extended color: N;5;I (256-color) or N;2;R;G;B (RGB). Only 48
+                // sets a background, but the payload of 38 (foreground) and 58
+                // (underline) has to be skipped just the same: a zero channel
+                // would otherwise be read as SGR 0 and clear the child bg.
+                if (48 === $n) {
+                    $state = true;
+                }
+                if ($idx + 1 < $count) {
+                    if ('5' === $parts[$idx + 1]) {
+                        $idx += 2; // skip N + 5; ++$idx at end advances past I
+                    } elseif ('2' === $parts[$idx + 1]) {
+                        $idx += 4; // skip N + 2 + R + G; ++$idx at end advances past B
+                    }
+                }
+            } elseif (0 === $n || 49 === $n) {
+                // SGR 0 (full reset) or SGR 49 (bg-default): clear child bg
+                $state = false;
+            } elseif (($n >= 40 && $n <= 47) || ($n >= 100 && $n <= 107)) {
+                // Standard (40-47) and bright (100-107) bg colors
+                $state = true;
+            }
+            ++$idx;
+        }
+
+        return $state;
     }
 }
