@@ -22,6 +22,7 @@ use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Style\GradientDirection;
 use Symfony\Component\Tui\Style\LinearGradient;
 use Symfony\Component\Tui\Style\Padding;
+use Symfony\Component\Tui\Style\RadialGradient;
 use Symfony\Component\Tui\Style\Style;
 use Symfony\Component\Tui\Style\TextAlign;
 use Symfony\Component\Tui\Style\VerticalAlign;
@@ -529,5 +530,52 @@ class StyleTest extends TestCase
         $codes = array_map(static fn ($row) => array_map(static fn ($c) => $c->toBackgroundCode(), $row), $style->getGradient()->resolve(2, 2));
         $this->assertSame($codes[0][0], $codes[0][1], 'vertical gradient: columns of a row are identical');
         $this->assertNotSame($codes[0][0], $codes[1][0], 'vertical gradient: rows differ');
+    }
+
+    public function testWithRadialGradientFromArray()
+    {
+        $style = (new Style())->withRadialGradient(['red', 'blue']);
+
+        $this->assertInstanceOf(RadialGradient::class, $style->getGradient());
+        $this->assertNull($style->getBackground());
+    }
+
+    public function testWithRadialGradientFromObject()
+    {
+        $g = RadialGradient::centered('red', 'blue');
+        $style = (new Style())->withRadialGradient($g);
+
+        $this->assertSame($g, $style->getGradient());
+    }
+
+    public function testWithRadialGradientObjectAndCenterOverridesCenter()
+    {
+        $g = RadialGradient::centered('#ff0000', '#0000ff');
+        $style = (new Style())->withRadialGradient($g, 0.0, 0.0);
+
+        $this->assertNotSame($g, $style->getGradient());
+        $this->assertSame(
+            self::codes(RadialGradient::from(['#ff0000', '#0000ff'], 0.0, 0.0)->resolve(5, 5)),
+            self::codes($style->getGradient()->resolve(5, 5))
+        );
+    }
+
+    public function testWithRadialGradientObjectKeepsUnspecifiedGeometry()
+    {
+        $g = RadialGradient::from(['#ff0000', '#0000ff'], 0.2, 0.3, 1.0);
+        $style = (new Style())->withRadialGradient($g, null, null, 3.0);
+
+        $this->assertSame(
+            self::codes(RadialGradient::from(['#ff0000', '#0000ff'], 0.2, 0.3, 3.0)->resolve(6, 4)),
+            self::codes($style->getGradient()->resolve(6, 4))
+        );
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private static function codes(array $colors): array
+    {
+        return array_map(static fn (array $row) => array_map(static fn ($c) => $c->toBackgroundCode(), $row), $colors);
     }
 }
