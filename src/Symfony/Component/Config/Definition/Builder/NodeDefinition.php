@@ -119,6 +119,20 @@ abstract class NodeDefinition implements NodeParentInterface
     }
 
     /**
+     * Declares that this node is an alias of the configuration of another extension.
+     *
+     * The value of the node is forwarded to that extension instead of being
+     * processed by this tree, and dumpers reference the configuration of
+     * that extension instead of describing the node.
+     *
+     * @return $this
+     */
+    public function extension(string $alias): static
+    {
+        return $this->attribute('extension', $alias);
+    }
+
+    /**
      * Sets an attribute on the node.
      *
      * @return $this

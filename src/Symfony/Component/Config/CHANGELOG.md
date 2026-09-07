@@ -4,6 +4,8 @@ CHANGELOG
 8.2
 ---
 
+ * Add `NodeDefinition::extension()` to declare a node as an alias of the configuration of another extension
+ * Add argument `$resolveExtension` to `ArrayShapeGenerator::generate()` and to the constructor of `JsonSchemaDumper` to dump extension aliases as references
  * Add `JsonSchemaDumper` to dump JSON Schema from configuration node definitions
  * Add `BaseNode::isNullable()` to check if a node accepts null as input
  * Add `BaseNode::hasNormalizationClosures()` to check if closures are used to normalize the value

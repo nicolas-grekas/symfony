@@ -19,15 +19,22 @@ use Symfony\Component\Config\Loader\ParamConfigurator;
  */
 final class ArrayShapeGenerator
 {
-    public static function generate(NodeInterface $node): string
+    /**
+     * @param (\Closure(string $extensionAlias): ?string)|null $resolveExtension Returns the name of the type describing the configuration of an extension, or null when unknown
+     */
+    public static function generate(NodeInterface $node, ?\Closure $resolveExtension = null): string
     {
         // "*/" anywhere in the shape (a comment, an enum value, a node name) would prematurely
         // close the surrounding doc block, so the slash is escaped to keep the value readable
-        return str_replace(['*/', "\n"], ['*\/', "\n * "], self::doGeneratePhpDoc($node));
+        return str_replace(['*/', "\n"], ['*\/', "\n * "], self::doGeneratePhpDoc($node, 1, $resolveExtension));
     }
 
-    private static function doGeneratePhpDoc(NodeInterface $node, int $nestingLevel = 1): string
+    private static function doGeneratePhpDoc(NodeInterface $node, int $nestingLevel = 1, ?\Closure $resolveExtension = null): string
     {
+        if ($node instanceof BaseNode && null !== ($alias = $node->getAttribute('extension')) && null !== $type = $resolveExtension?->__invoke($alias)) {
+            return $type;
+        }
+
         if (!$node instanceof ArrayNode) {
             $typeString = match (true) {
                 $node instanceof BooleanNode => $node->hasDefaultValue() && null === $node->getDefaultValue() ? 'bool|null' : 'bool',
@@ -51,7 +58,7 @@ final class ArrayShapeGenerator
 
         if ($node instanceof PrototypedArrayNode) {
             $isHashmap = (bool) $node->getKeyAttribute();
-            $arrayShape = ($isHashmap ? 'array<string, ' : 'list<').self::doGeneratePhpDoc($node->getPrototype(), $nestingLevel).'>';
+            $arrayShape = ($isHashmap ? 'array<string, ' : 'list<').self::doGeneratePhpDoc($node->getPrototype(), $nestingLevel, $resolveExtension).'>';
 
             return implode('|', [...self::getNormalizedTypes($node, ['array', 'any']), $arrayShape]);
         }
@@ -65,7 +72,7 @@ final class ArrayShapeGenerator
         foreach ($children as $child) {
             $arrayShape .= str_repeat('    ', $nestingLevel).self::dumpNodeKey($child, $node).': ';
 
-            $arrayShape .= self::doGeneratePhpDoc($child, 1 + $nestingLevel);
+            $arrayShape .= self::doGeneratePhpDoc($child, 1 + $nestingLevel, $resolveExtension);
 
             $arrayShape .= \sprintf(",%s\n", !$child instanceof ArrayNode ? self::generateInlinePhpDocForNode($child) : '');
         }

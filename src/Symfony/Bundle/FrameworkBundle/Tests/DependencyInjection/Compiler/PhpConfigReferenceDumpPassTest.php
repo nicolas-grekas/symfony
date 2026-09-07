@@ -193,6 +193,8 @@ class TestConfiguration implements ConfigurationInterface
                         ->end()
                     ->end()
                     ->booleanNode('fromBundle')->defaultValue($this->fromBundle)->end()
+                    ->variableNode('app_alias')->extension('app')->setDeprecated('symfony/test', '1.0')->end()
+                    ->variableNode('unknown_alias')->extension('unknown')->end()
                 ->end();
         }
 
