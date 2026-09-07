@@ -82,6 +82,8 @@ use Symfony\Component\Lock\Store\FlockStore;
 use Symfony\Component\Lock\Store\SemaphoreStore;
 use Symfony\Component\Mailer\EventListener\InMemoryPgpPublicKeyRepository;
 use Symfony\Component\Mailer\EventListener\InMemorySmimeCertificateRepository;
+use Symfony\Component\Mailer\EventListener\PgpMimeEncryptedMessageListener;
+use Symfony\Component\Mailer\EventListener\PgpMimeSignedMessageListener;
 use Symfony\Component\Mailer\Header\TrackingHeader;
 use Symfony\Component\Messenger\Attribute\AsMessage;
 use Symfony\Component\Messenger\Bridge\AmazonSqs\Transport\AmazonSqsTransportFactory;
@@ -2994,8 +2996,8 @@ abstract class FrameworkExtensionTestCase extends TestCase
 
     public function testMailerPgp()
     {
-        if (!class_exists(PgpSigner::class)) {
-            $this->markTestSkipped('This test requires symfony/mime 8.2 or higher.');
+        if (!class_exists(PgpSigner::class) || !class_exists(PgpMimeSignedMessageListener::class)) {
+            $this->markTestSkipped('This test requires symfony/mime 8.2 and symfony/mailer 8.2 or higher.');
         }
 
         $container = $this->createContainerFromFile('mailer_with_pgp');
@@ -3027,8 +3029,8 @@ abstract class FrameworkExtensionTestCase extends TestCase
 
     public function testMailerPgpEncrypterFailsAndDoesNotEncryptForTheSenderByDefault()
     {
-        if (!class_exists(PgpEncrypter::class)) {
-            $this->markTestSkipped('This test requires symfony/mime 8.2 or higher.');
+        if (!class_exists(PgpEncrypter::class) || !class_exists(PgpMimeEncryptedMessageListener::class)) {
+            $this->markTestSkipped('This test requires symfony/mime 8.2 and symfony/mailer 8.2 or higher.');
         }
 
         $container = $this->createContainerFromFile('mailer_with_pgp_repository');
