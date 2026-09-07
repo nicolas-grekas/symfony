@@ -17,10 +17,12 @@ use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\ConsoleBundle;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+use Symfony\Component\DependencyInjection\Kernel\ServicesBundle;
 use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\Filesystem\Filesystem;
@@ -28,6 +30,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Kernel;
+use Symfony\Component\JsonPath\JsonPathBundle;
+use Symfony\Component\Mime\MimeBundle;
+use Symfony\Component\ObjectMapper\ObjectMapperBundle;
+use Symfony\Component\Process\ProcessBundle;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
 require_once __DIR__.'/default/src/DefaultKernel.php';
@@ -276,15 +282,22 @@ class MicroKernelTraitTest extends TestCase
         $parameters = $kernel->getKernelParameters();
 
         $this->assertSame(['test', 'dev'], $parameters['.container.known_envs']);
-        $this->assertSame([
-            'Symfony\Component\DependencyInjection\Kernel\ServicesBundle' => ['all' => true],
-            'Symfony\Component\Console\ConsoleBundle' => ['all' => true],
-            'Symfony\Component\Process\ProcessBundle' => ['all' => true],
-            'Symfony\Component\JsonPath\JsonPathBundle' => ['all' => true],
-            'Symfony\Component\Mime\MimeBundle' => ['all' => true],
-            'Symfony\Bundle\FrameworkBundle\FrameworkBundle' => ['all' => true],
-            'TestBundle' => ['test' => true, 'dev' => true],
-        ], $parameters['.kernel.bundles_definition']);
+        $expected = [
+            ServicesBundle::class => ['all' => true],
+            ConsoleBundle::class => ['all' => true],
+        ];
+
+        // registered with ignoreOnInvalid, so absent when the component is not installed
+        foreach ([ProcessBundle::class, JsonPathBundle::class, MimeBundle::class, ObjectMapperBundle::class] as $class) {
+            if (class_exists($class)) {
+                $expected[$class] = ['all' => true];
+            }
+        }
+
+        $expected['Symfony\Bundle\FrameworkBundle\FrameworkBundle'] = ['all' => true];
+        $expected['TestBundle'] = ['test' => true, 'dev' => true];
+
+        $this->assertSame($expected, $parameters['.kernel.bundles_definition']);
     }
 
     public function testAllowedEnvsRestrictsKnownEnvs()
