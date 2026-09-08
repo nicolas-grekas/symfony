@@ -428,6 +428,39 @@ class DebugCommandTest extends TestCase
         $this->assertStringNotContainsString('async', $display);
     }
 
+    public function testOutputWarnsAboutHandlersBoundToAnUnknownTransport()
+    {
+        $command = new DebugCommand(
+            [
+                'command_bus' => [
+                    DummyCommand::class => [
+                        [DummyCommandHandler::class, ['from_transport' => 'ghost']],
+                        [DummyCommandHandler::class, ['from_transport' => 'async']],
+                    ],
+                ],
+            ],
+            [DummyCommand::class => ['messenger.transport.async']],
+            ['async' => 'messenger.transport.async'],
+        );
+
+        $tester = new CommandTester($command);
+        $tester->execute([], ['decorated' => false]);
+        $display = $tester->getDisplay(true);
+
+        $this->assertStringContainsString('transport "ghost" is not configured', $display);
+        $this->assertSame(1, substr_count($display, 'is not configured'));
+    }
+
+    public function testOutputDoesNotWarnAboutBoundHandlersWithoutConfiguredTransports()
+    {
+        $command = new DebugCommand(['command_bus' => [DummyCommand::class => [[DummyCommandHandler::class, ['from_transport' => 'ghost']]]]]);
+
+        $tester = new CommandTester($command);
+        $tester->execute([], ['decorated' => false]);
+
+        $this->assertStringNotContainsString('is not configured', $tester->getDisplay(true));
+    }
+
     public function testExceptionOnUnknownBusArgument()
     {
         $this->expectException(RuntimeException::class);

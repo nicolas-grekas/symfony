@@ -121,6 +121,11 @@ class DebugCommand extends Command
                     if ($handlerDescription = self::getClassDescription($handler[0])) {
                         $tableRows[] = [\sprintf('               <comment>%s</>', $handlerDescription)];
                     }
+
+                    $fromTransport = $handler[1]['from_transport'] ?? null;
+                    if (null !== $fromTransport && $this->senderAliases && !isset($this->senderAliases[$fromTransport]) && !\in_array($fromTransport, $this->senderAliases, true)) {
+                        $tableRows[] = [\sprintf('               <fg=red>transport "%s" is not configured</>', $fromTransport)];
+                    }
                 }
 
                 if (!$handlers) {
