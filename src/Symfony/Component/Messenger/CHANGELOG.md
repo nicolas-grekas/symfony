@@ -17,6 +17,8 @@ CHANGELOG
  * Add an optional `LoggingMiddleware` logging the processing time and memory usage of each message
  * Add the `messenger:show` command to list and inspect pending messages of a transport
  * Make the `messenger:consume` and `messenger:failed:retry` commands exit immediately when a second `SIGINT` is received
+ * Add `StopWorkerOnIdleListener` to stop the worker as soon as no message is available
+ * Make `InMemoryTransport` implement `ListableReceiverInterface` and `MessageCountAwareInterface`
 
 8.1
 ---
