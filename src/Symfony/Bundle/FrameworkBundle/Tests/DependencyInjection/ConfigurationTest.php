@@ -735,6 +735,24 @@ class ConfigurationTest extends TestCase
         ]]);
     }
 
+    public function testMessengerOutboxConfiguration()
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(true), [[
+            'messenger' => [
+                'transports' => [
+                    'orders' => [
+                        'dsn' => 'amqp://localhost/%2f/orders',
+                        'outbox' => 'outbox',
+                    ],
+                    'outbox' => 'doctrine://default?queue_name=outbox',
+                ],
+            ],
+        ]]);
+
+        $this->assertSame('outbox', $config['messenger']['transports']['orders']['outbox']);
+        $this->assertNull($config['messenger']['transports']['outbox']['outbox']);
+    }
+
     public function testBusMiddlewareDontMerge()
     {
         $processor = new Processor();

@@ -133,6 +133,7 @@ use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\RouterContextMiddleware;
+use Symfony\Component\Messenger\Transport\Sender\OutboxSender;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\TransportFactoryInterface as MessengerTransportFactoryInterface;
@@ -2710,6 +2711,22 @@ class FrameworkExtension extends Extension
                 if (!isset($senderReferences[$transport['failure_transport']])) {
                     throw new LogicException(\sprintf('Invalid Messenger configuration: the failure transport "%s" is not a valid transport or service id.', $transport['failure_transport']));
                 }
+            }
+
+            if ($transport['outbox']) {
+                if (!isset($config['transports'][$transport['outbox']])) {
+                    throw new LogicException(\sprintf('Invalid Messenger configuration: the outbox "%s" of the "%s" transport is not a configured transport.', $transport['outbox'], $name));
+                }
+                if ($transport['outbox'] === $name) {
+                    throw new LogicException(\sprintf('Invalid Messenger configuration: the "%s" transport cannot be its own outbox.', $name));
+                }
+                if (!class_exists(OutboxSender::class)) {
+                    throw new LogicException('Outbox transports require symfony/messenger 8.2 or higher.');
+                }
+
+                $container->setDefinition($outboxSenderId = '.messenger.transport.'.$name.'.outbox_sender', (new Definition(OutboxSender::class))
+                    ->setArguments([new Reference($senderAliases[$name]), new Reference($senderAliases[$transport['outbox']]), $name]));
+                $senderReferences[$name] = $senderReferences[$senderAliases[$name]] = new Reference($outboxSenderId);
             }
         }
 

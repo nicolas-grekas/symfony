@@ -100,6 +100,7 @@ use Symfony\Component\Messenger\DependencyInjection\MessengerPass;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\DeduplicateMiddleware;
+use Symfony\Component\Messenger\Transport\Sender\OutboxSender;
 use Symfony\Component\Messenger\Transport\Sender\SendersLocator;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
 use Symfony\Component\Messenger\Transport\TransportFactory;
@@ -1510,6 +1511,64 @@ abstract class FrameworkExtensionTestCase extends TestCase
         $eligible = $container->getDefinition('messenger.signing_serializer')->getArgument(2)['*'];
         $this->assertContains('messenger.default_serializer', $eligible);
         $this->assertNotContains('.messenger.transport.async.claim_check_serializer', $eligible);
+    }
+
+    public function testMessengerOutbox()
+    {
+        if (!class_exists(OutboxSender::class)) {
+            $this->markTestSkipped('Outbox transports require symfony/messenger 8.2 or higher.');
+        }
+
+        $container = $this->createContainerFromFile('messenger_outbox');
+
+        $outboxSender = $container->getDefinition('.messenger.transport.orders.outbox_sender');
+        $this->assertSame(OutboxSender::class, $outboxSender->getClass());
+        $this->assertEquals([new Reference('messenger.transport.orders'), new Reference('messenger.transport.outbox'), 'orders'], $outboxSender->getArguments());
+
+        $sendersLocatorId = (string) $container->getDefinition('messenger.senders_locator')->getArgument(1);
+        $senders = $container->getDefinition($sendersLocatorId)->getArgument(0);
+        $this->assertEquals(new Reference('.messenger.transport.orders.outbox_sender'), $senders['orders']->getValues()[0]);
+        $this->assertEquals(new Reference('.messenger.transport.orders.outbox_sender'), $senders['messenger.transport.orders']->getValues()[0]);
+        $this->assertEquals(new Reference('messenger.transport.outbox'), $senders['outbox']->getValues()[0]);
+        $this->assertSame($sendersLocatorId, (string) $container->getDefinition('messenger.retry.send_failed_message_for_retry_listener')->getArgument(0));
+
+        $transport = $container->getDefinition('messenger.transport.orders');
+        $this->assertEquals([new Reference('messenger.transport_factory'), 'createTransport'], $transport->getFactory());
+        $this->assertSame('amqp://localhost/%2f/orders', $transport->getArgument(0));
+        $this->assertSame(['transport_name' => 'orders'], $transport->getArgument(1));
+        $this->assertEquals([['alias' => 'orders', 'is_failure_transport' => false, 'priority' => 0]], $transport->getTag('messenger.receiver'));
+    }
+
+    public function testMessengerOutboxMustBeAConfiguredTransport()
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Invalid Messenger configuration: the outbox "missing" of the "orders" transport is not a configured transport.');
+
+        $this->createContainerFromClosure(static function (ContainerBuilder $container) {
+            $container->loadFromExtension('framework', [
+                'messenger' => [
+                    'transports' => [
+                        'orders' => ['dsn' => 'in-memory:///', 'outbox' => 'missing'],
+                    ],
+                ],
+            ]);
+        });
+    }
+
+    public function testMessengerOutboxCannotBeTheTransportItself()
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Invalid Messenger configuration: the "orders" transport cannot be its own outbox.');
+
+        $this->createContainerFromClosure(static function (ContainerBuilder $container) {
+            $container->loadFromExtension('framework', [
+                'messenger' => [
+                    'transports' => [
+                        'orders' => ['dsn' => 'in-memory:///', 'outbox' => 'orders'],
+                    ],
+                ],
+            ]);
+        });
     }
 
     #[Group('legacy')]
