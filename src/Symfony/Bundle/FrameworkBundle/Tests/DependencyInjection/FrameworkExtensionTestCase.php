@@ -98,6 +98,7 @@ use Symfony\Component\Messenger\Bridge\MongoDb\Transport\MongoDbTransportFactory
 use Symfony\Component\Messenger\Bridge\Redis\Transport\RedisTransportFactory;
 use Symfony\Component\Messenger\DependencyInjection\MessengerPass;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Middleware\ChainMiddleware;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\DeduplicateMiddleware;
 use Symfony\Component\Messenger\Transport\Sender\SendersLocator;
@@ -1237,6 +1238,20 @@ abstract class FrameworkExtensionTestCase extends TestCase
         }
     }
 
+    public function testMessengerChainMiddleware()
+    {
+        if (!class_exists(ChainMiddleware::class)) {
+            $this->markTestSkipped('symfony/messenger 8.2 is required.');
+        }
+
+        $container = $this->createContainerFromFile('messenger', [], true, false);
+        $container->addCompilerPass(new MessengerPass());
+        $container->compile();
+
+        $this->assertSame('messenger.routable_message_bus', (string) $container->getDefinition('messenger.middleware.chain')->getArgument(0));
+        $this->assertContains('messenger.middleware.chain', $this->getBusMiddlewareIds($container, 'messenger.bus.default'));
+    }
+
     public function testMessengerRejectRedeliveredMessagesEnabledByDefault()
     {
         $container = $this->createContainerFromFile('messenger', [], true, false);
@@ -1593,6 +1608,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
             ['id' => 'send_message', 'arguments' => [true]],
+            ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
         ], $container->getParameter('messenger.bus.commands.middleware'));
         $this->assertTrue($container->has('messenger.bus.events'));
@@ -1606,6 +1622,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'failed_message_processing_middleware'],
             ['id' => 'with_factory', 'arguments' => ['foo', true, ['bar' => 'baz']]],
             ['id' => 'send_message', 'arguments' => [true]],
+            ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
         ], $container->getParameter('messenger.bus.events.middleware'));
         $this->assertTrue($container->has('messenger.bus.queries'));
@@ -1639,6 +1656,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
             ['id' => 'send_message', 'arguments' => [true]],
+            ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
         ], $container->getParameter('messenger.bus.events.middleware'));
     }
@@ -1662,6 +1680,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'failed_message_processing_middleware'],
             ['id' => 'deduplicate_middleware'],
             ['id' => 'send_message', 'arguments' => [true]],
+            ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
         ], $container->getParameter('messenger.bus.commands.middleware'));
         $this->assertTrue($container->has('messenger.bus.events'));
@@ -1676,6 +1695,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'deduplicate_middleware'],
             ['id' => 'with_factory', 'arguments' => ['foo', true, ['bar' => 'baz']]],
             ['id' => 'send_message', 'arguments' => [true]],
+            ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
         ], $container->getParameter('messenger.bus.events.middleware'));
         $this->assertTrue($container->has('messenger.bus.queries'));

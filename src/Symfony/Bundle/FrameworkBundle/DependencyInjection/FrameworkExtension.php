@@ -131,6 +131,7 @@ use Symfony\Component\Messenger\EventListener\ReleaseDeduplicationLockOnFailureL
 use Symfony\Component\Messenger\Handler\BatchHandlerInterface;
 use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Middleware\ChainMiddleware;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\RouterContextMiddleware;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
@@ -2538,6 +2539,7 @@ class FrameworkExtension extends Extension
             ],
             'after' => [
                 ['id' => 'send_message'],
+                ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
                 ['id' => 'handle_message'],
             ],
         ];
@@ -2557,7 +2559,7 @@ class FrameworkExtension extends Extension
 
             if ($bus['default_middleware']['enabled']) {
                 $defaultMiddleware['after'][0]['arguments'] = [$bus['default_middleware']['allow_no_senders']];
-                $defaultMiddleware['after'][1]['arguments'] = ['index_1' => $bus['default_middleware']['allow_no_handlers']];
+                $defaultMiddleware['after'][array_key_last($defaultMiddleware['after'])]['arguments'] = ['index_1' => $bus['default_middleware']['allow_no_handlers']];
 
                 $middleware = array_merge($defaultMiddleware['before'], $middleware, $defaultMiddleware['after']);
             }
@@ -2695,6 +2697,10 @@ class FrameworkExtension extends Extension
             $container->getDefinition('messenger.transport.serializer_locator')->replaceArgument(0, $serializerReferencesByTransport);
         } else {
             $container->removeDefinition('messenger.middleware.decode_failed_message_middleware');
+        }
+
+        if (!class_exists(ChainMiddleware::class)) {
+            $container->removeDefinition('messenger.middleware.chain');
         }
 
         $senderReferences = [];
