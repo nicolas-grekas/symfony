@@ -18,6 +18,7 @@ use Symfony\Component\Messenger\Stamp\BusNameStamp;
 use Symfony\Component\Messenger\Stamp\ChainStamp;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
+use Symfony\Component\Messenger\Stamp\DispatchOnFailureStamp;
 use Symfony\Component\Messenger\Test\Middleware\MiddlewareTestCase;
 use Symfony\Component\Messenger\Tests\Fixtures\DummyMessage;
 use Symfony\Component\Messenger\Tests\Fixtures\SecondMessage;
@@ -122,6 +123,48 @@ class ChainMiddlewareTest extends MiddlewareTestCase
             ->with($this->callback(function (Envelope $next) use ($second, $third, $fourth) {
                 $this->assertSame($second, $next->getMessage());
                 $this->assertSame([[$third], [$fourth]], array_map(static fn (ChainStamp $stamp) => $stamp->getMessages(), $next->all(ChainStamp::class)));
+
+                return true;
+            }))
+            ->willReturnArgument(0);
+
+        $middleware = new ChainMiddleware($bus);
+        $middleware->handle($envelope, $this->getStackMock());
+    }
+
+    public function testDispatchOnFailureStampIsCopiedToTheNextMessage()
+    {
+        $second = new SecondMessage();
+        $failureStamp = new DispatchOnFailureStamp(new ThirdMessage());
+        $envelope = new Envelope(new DummyMessage('first'), [$failureStamp, new ChainStamp($second)]);
+
+        $bus = $this->createMock(MessageBusInterface::class);
+        $bus->expects($this->once())
+            ->method('dispatch')
+            ->with($this->callback(function (Envelope $next) use ($second, $failureStamp) {
+                $this->assertSame($second, $next->getMessage());
+                $this->assertSame([$failureStamp], $next->all(DispatchOnFailureStamp::class));
+
+                return true;
+            }))
+            ->willReturnArgument(0);
+
+        $middleware = new ChainMiddleware($bus);
+        $middleware->handle($envelope, $this->getStackMock());
+    }
+
+    public function testEnvelopeInChainKeepsItsOwnDispatchOnFailureStamp()
+    {
+        $second = new SecondMessage();
+        $ownFailureStamp = new DispatchOnFailureStamp(new ThirdMessage());
+        $envelope = new Envelope(new DummyMessage('first'), [new DispatchOnFailureStamp(new DummyMessage('failure')), new ChainStamp(new Envelope($second, [$ownFailureStamp]))]);
+
+        $bus = $this->createMock(MessageBusInterface::class);
+        $bus->expects($this->once())
+            ->method('dispatch')
+            ->with($this->callback(function (Envelope $next) use ($second, $ownFailureStamp) {
+                $this->assertSame($second, $next->getMessage());
+                $this->assertSame([$ownFailureStamp], $next->all(DispatchOnFailureStamp::class));
 
                 return true;
             }))

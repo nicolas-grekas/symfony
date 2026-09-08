@@ -133,6 +133,7 @@ use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Middleware\ChainMiddleware;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
+use Symfony\Component\Messenger\Middleware\DispatchOnFailureMiddleware;
 use Symfony\Component\Messenger\Middleware\RouterContextMiddleware;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
@@ -2536,6 +2537,7 @@ class FrameworkExtension extends Extension
                 ['id' => 'dispatch_after_current_bus'],
                 ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
                 ['id' => 'failed_message_processing_middleware'],
+                ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ],
             'after' => [
                 ['id' => 'send_message'],
@@ -2701,6 +2703,11 @@ class FrameworkExtension extends Extension
 
         if (!class_exists(ChainMiddleware::class)) {
             $container->removeDefinition('messenger.middleware.chain');
+        }
+
+        if (!class_exists(DispatchOnFailureMiddleware::class)) {
+            $container->removeDefinition('messenger.middleware.dispatch_on_failure');
+            $container->removeDefinition('messenger.failure.dispatch_on_failure_listener');
         }
 
         $senderReferences = [];

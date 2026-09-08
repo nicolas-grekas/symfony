@@ -18,6 +18,7 @@ CHANGELOG
  * Add the `messenger:show` command to list and inspect pending messages of a transport
  * Make the `messenger:consume` and `messenger:failed:retry` commands exit immediately when a second `SIGINT` is received
  * Add `ChainStamp` and `ChainMiddleware` to dispatch a sequence of messages one after another, each one once the previous one is handled
+ * Add `DispatchOnFailureStamp`, `FailedMessageStamp`, `DispatchOnFailureMiddleware` and `DispatchOnFailureListener` to dispatch a message when another one fails for good
 
 8.1
 ---

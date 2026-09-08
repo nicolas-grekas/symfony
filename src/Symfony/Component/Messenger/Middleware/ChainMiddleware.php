@@ -16,6 +16,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\BusNameStamp;
 use Symfony\Component\Messenger\Stamp\ChainStamp;
 use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
+use Symfony\Component\Messenger\Stamp\DispatchOnFailureStamp;
 
 /**
  * Dispatches the next message of a ChainStamp once the current message is handled.
@@ -61,6 +62,10 @@ final class ChainMiddleware implements MiddlewareInterface
 
         if (null === $next->last(BusNameStamp::class) && null !== $busNameStamp = $envelope->last(BusNameStamp::class)) {
             $next = $next->with($busNameStamp);
+        }
+
+        if (null === $next->last(DispatchOnFailureStamp::class) && null !== $failureStamp = $envelope->last(DispatchOnFailureStamp::class)) {
+            $next = $next->with($failureStamp);
         }
 
         $this->bus->dispatch($next);

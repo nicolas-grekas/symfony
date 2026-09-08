@@ -101,6 +101,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Middleware\ChainMiddleware;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\DeduplicateMiddleware;
+use Symfony\Component\Messenger\Middleware\DispatchOnFailureMiddleware;
 use Symfony\Component\Messenger\Transport\Sender\SendersLocator;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
 use Symfony\Component\Messenger\Transport\TransportFactory;
@@ -1252,6 +1253,25 @@ abstract class FrameworkExtensionTestCase extends TestCase
         $this->assertContains('messenger.middleware.chain', $this->getBusMiddlewareIds($container, 'messenger.bus.default'));
     }
 
+    public function testMessengerDispatchOnFailure()
+    {
+        if (!class_exists(DispatchOnFailureMiddleware::class)) {
+            $this->markTestSkipped('symfony/messenger 8.2 is required.');
+        }
+
+        $container = $this->createContainerFromFile('messenger', [], true, false);
+        $container->addCompilerPass(new MessengerPass());
+        $container->compile();
+
+        $this->assertSame('messenger.routable_message_bus', (string) $container->getDefinition('messenger.middleware.dispatch_on_failure')->getArgument(0));
+        $this->assertContains('messenger.middleware.dispatch_on_failure', $this->getBusMiddlewareIds($container, 'messenger.bus.default'));
+
+        $listener = $container->getDefinition('messenger.failure.dispatch_on_failure_listener');
+        $this->assertEquals(new Reference('messenger.routable_message_bus'), $listener->getArgument(0));
+        $this->assertEquals(new Reference('logger', ContainerInterface::IGNORE_ON_INVALID_REFERENCE), $listener->getArgument(1));
+        $this->assertTrue($listener->hasTag('kernel.event_subscriber'));
+    }
+
     public function testMessengerRejectRedeliveredMessagesEnabledByDefault()
     {
         $container = $this->createContainerFromFile('messenger', [], true, false);
@@ -1607,6 +1627,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'dispatch_after_current_bus'],
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
+            ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ['id' => 'send_message', 'arguments' => [true]],
             ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
@@ -1620,6 +1641,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'dispatch_after_current_bus'],
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
+            ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ['id' => 'with_factory', 'arguments' => ['foo', true, ['bar' => 'baz']]],
             ['id' => 'send_message', 'arguments' => [true]],
             ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
@@ -1655,6 +1677,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'dispatch_after_current_bus'],
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
+            ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ['id' => 'send_message', 'arguments' => [true]],
             ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
             ['id' => 'handle_message', 'arguments' => ['index_1' => false]],
@@ -1678,6 +1701,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'dispatch_after_current_bus'],
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
+            ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ['id' => 'deduplicate_middleware'],
             ['id' => 'send_message', 'arguments' => [true]],
             ...(class_exists(ChainMiddleware::class) ? [['id' => 'chain']] : []),
@@ -1692,6 +1716,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
             ['id' => 'dispatch_after_current_bus'],
             ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
             ['id' => 'failed_message_processing_middleware'],
+            ...(class_exists(DispatchOnFailureMiddleware::class) ? [['id' => 'dispatch_on_failure']] : []),
             ['id' => 'deduplicate_middleware'],
             ['id' => 'with_factory', 'arguments' => ['foo', true, ['bar' => 'baz']]],
             ['id' => 'send_message', 'arguments' => [true]],
