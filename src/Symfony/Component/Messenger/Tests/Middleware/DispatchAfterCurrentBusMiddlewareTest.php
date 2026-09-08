@@ -293,6 +293,73 @@ class DispatchAfterCurrentBusMiddlewareTest extends TestCase
         self::assertNull($envelope->last(DispatchAfterCurrentBusStamp::class));
     }
 
+    public function testMessagesQueuedByAFailedNestedDispatchAreDropped()
+    {
+        $message = new DummyMessage('Hello');
+        $nestedMessage = new DummyMessage('Nested');
+        $event = new DummyEvent('Event queued by the failed nested dispatch');
+
+        $middleware = new DispatchAfterCurrentBusMiddleware();
+        $handlingMiddleware = $this->createMock(MiddlewareInterface::class);
+
+        $eventBus = new MessageBus([
+            $middleware,
+            $handlingMiddleware,
+        ]);
+
+        $nestedBus = new MessageBus([
+            $middleware,
+            new DispatchingMiddleware($eventBus, [
+                new Envelope($event, [new DispatchAfterCurrentBusStamp()]),
+            ]),
+            $handlingMiddleware,
+        ]);
+
+        $messageBus = new MessageBus([
+            $middleware,
+            new class($nestedBus, $nestedMessage) implements MiddlewareInterface {
+                public function __construct(
+                    private MessageBusInterface $bus,
+                    private object $message,
+                ) {
+                }
+
+                public function handle(Envelope $envelope, StackInterface $stack): Envelope
+                {
+                    try {
+                        $this->bus->dispatch($this->message);
+                    } catch (\RuntimeException) {
+                    }
+
+                    return $stack->next()->handle($envelope, $stack);
+                }
+            },
+            $handlingMiddleware,
+        ]);
+
+        $series = [
+            // The nested message fails after queueing the event:
+            $nestedMessage,
+            // The main message is handled, and the queued event must not follow:
+            $message,
+        ];
+
+        $handlingMiddleware->expects($this->exactly(2))
+            ->method('handle')
+            ->with($this->callback(static function (Envelope $envelope) use (&$series) {
+                return $envelope->getMessage() === array_shift($series);
+            }))
+            ->willReturnCallback(static function (Envelope $envelope, StackInterface $stack) use ($nestedMessage) {
+                if ($envelope->getMessage() === $nestedMessage) {
+                    throw new \RuntimeException('Some exception while handling the nested message');
+                }
+
+                return $stack->next()->handle($envelope, $stack);
+            });
+
+        $messageBus->dispatch($message);
+    }
+
     private function expectHandledMessage($message): Callback
     {
         return $this->callback(static fn (Envelope $envelope) => $envelope->getMessage() === $message);

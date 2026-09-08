@@ -17,6 +17,10 @@ CHANGELOG
  * Add an optional `LoggingMiddleware` logging the processing time and memory usage of each message
  * Add the `messenger:show` command to list and inspect pending messages of a transport
  * Make the `messenger:consume` and `messenger:failed:retry` commands exit immediately when a second `SIGINT` is received
+ * Add `retry` and `failure_transport` options to the `sync://` transport to retry failed messages in place and to send them to the failure transport
+ * Add `$retryStrategy`, `$failureSender`, `$eventDispatcher` and `$logger` arguments to `SyncTransport` and `$retryStrategyLocator`, `$failureSenderLocator`, `$eventDispatcher` and `$logger` arguments to `SyncTransportFactory`
+ * Drop the messages queued with `DispatchAfterCurrentBusStamp` by a nested dispatch when that dispatch fails
+ * Add `SyncMessageFailedEvent` and `SyncMessageRetryingEvent`, dispatched by the sync transport when handling a message fails and before it is handled again
 
 8.1
 ---

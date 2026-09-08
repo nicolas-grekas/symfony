@@ -1182,6 +1182,10 @@ abstract class FrameworkExtensionTestCase extends TestCase
         $this->assertTrue($container->hasDefinition('messenger.listener.reset_services'));
         $this->assertSame('messenger.listener.reset_services', (string) $container->getDefinition('console.command.messenger_consume_messages')->getArgument(5));
         $this->assertSame('%kernel.project_dir%/bin/console', $container->getDefinition('console.command.messenger_consume_messages')->getArgument(9));
+
+        $syncFactoryArguments = $container->getDefinition('messenger.transport.sync.factory')->getArguments();
+        $this->assertEquals(new Reference('messenger.retry_strategy_locator'), $syncFactoryArguments[1]);
+        $this->assertSame([], $container->getDefinition((string) $syncFactoryArguments[2])->getArgument(0));
     }
 
     public function testMessengerAsMessageAttributeIsForwardedToTheTag()
@@ -1478,6 +1482,13 @@ abstract class FrameworkExtensionTestCase extends TestCase
             return array_shift($values);
         }, $failureTransports);
         $this->assertEquals($expectedTransportsByFailureTransports, $failureTransportsReferences);
+
+        $syncFactoryArguments = $container->getDefinition('messenger.transport.sync.factory')->getArguments();
+        $this->assertEquals(new Reference('messenger.routable_message_bus'), $syncFactoryArguments[0]);
+        $this->assertEquals(new Reference('messenger.retry_strategy_locator'), $syncFactoryArguments[1]);
+        $this->assertEquals($failureTransportsByTransportNameServiceLocator, $syncFactoryArguments[2]);
+        $this->assertEquals(new Reference('event_dispatcher'), $syncFactoryArguments[3]);
+        $this->assertEquals(new Reference('logger', ContainerInterface::IGNORE_ON_INVALID_REFERENCE), $syncFactoryArguments[4]);
 
         $rateLimitedTransports = $container->getDefinition('messenger.rate_limiter_locator')->getArgument(0);
         $expectedRateLimitersByRateLimitedTransports = [

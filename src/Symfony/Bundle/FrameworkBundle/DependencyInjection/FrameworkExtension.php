@@ -2765,6 +2765,10 @@ class FrameworkExtension extends Extension
         $container->getDefinition('messenger.retry_strategy_locator')
             ->replaceArgument(0, $transportRetryReferences);
 
+        $failureTransportsByTransportNameServiceLocator = ServiceLocatorTagPass::register($container, $failureTransportReferencesByTransportName);
+        $container->getDefinition('messenger.transport.sync.factory')
+            ->replaceArgument(2, $failureTransportsByTransportNameServiceLocator);
+
         if (!$transportRateLimiterReferences) {
             $container->removeDefinition('messenger.rate_limiter_locator');
         } else {
@@ -2782,7 +2786,6 @@ class FrameworkExtension extends Extension
                     ->replaceArgument(0, $config['failure_transport']);
             }
 
-            $failureTransportsByTransportNameServiceLocator = ServiceLocatorTagPass::register($container, $failureTransportReferencesByTransportName);
             $container->getDefinition('messenger.failure.send_failed_message_to_failure_transport_listener')
                 ->replaceArgument(0, $failureTransportsByTransportNameServiceLocator)
                 ->replaceArgument(2, $failureTransportsByName);

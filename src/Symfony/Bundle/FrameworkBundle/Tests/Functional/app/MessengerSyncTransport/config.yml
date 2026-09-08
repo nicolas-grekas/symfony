@@ -1,0 +1,22 @@
+imports:
+    - { resource: ../config/default.yml }
+
+framework:
+    messenger:
+        failure_transport: failed
+        transports:
+            sync_with_retry:
+                dsn: 'sync://?retry=true&failure_transport=true'
+                retry_strategy:
+                    max_retries: 2
+            failed: 'in-memory://'
+        routing:
+            Symfony\Bundle\FrameworkBundle\Tests\Fixtures\Messenger\DummyMessage: sync_with_retry
+
+services:
+    Symfony\Bundle\FrameworkBundle\Tests\Fixtures\Messenger\FailingDummyMessageHandler:
+        autoconfigure: true
+
+    failed_transport:
+        alias: messenger.transport.failed
+        public: true
