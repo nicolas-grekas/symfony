@@ -90,6 +90,7 @@ use Symfony\Component\Mailer\EventListener\InMemoryPgpPublicKeyRepository;
 use Symfony\Component\Mailer\EventListener\InMemorySmimeCertificateRepository;
 use Symfony\Component\Mailer\Header\TrackingHeader;
 use Symfony\Component\Messenger\Attribute\AsMessage;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Bridge\AmazonSqs\Transport\AmazonSqsTransportFactory;
 use Symfony\Component\Messenger\Bridge\AmpSql\Transport\AmpSqlTransportFactory;
 use Symfony\Component\Messenger\Bridge\Amqp\Transport\AmqpTransportFactory;
@@ -1566,6 +1567,23 @@ abstract class FrameworkExtensionTestCase extends TestCase
 
         $this->assertSame([['transport' => ['async'], 'serializedTypeName' => null, 'serializedTypeNameAliases' => []]], $definition->getTag('messenger.message'));
         $this->assertSame([['source' => 'by tag "messenger.message"']], $definition->getTag('container.excluded'));
+    }
+
+    public function testAsMessageHandlerAutoconfigurationForwardsTheTransportToTheTag()
+    {
+        if (!property_exists(AsMessageHandler::class, 'transport')) {
+            $this->markTestSkipped('symfony/messenger 8.2 is required.');
+        }
+
+        $container = $this->createContainerFromClosure(static function (ContainerBuilder $container) {
+            $container->loadFromExtension('framework', []);
+        });
+
+        $definition = new ChildDefinition('foo');
+        $autoconfigurator = $container->getAttributeAutoconfigurators()[AsMessageHandler::class][0];
+        $autoconfigurator($definition, new AsMessageHandler(transport: 'async'), new \ReflectionClass(DummyMessage::class));
+
+        $this->assertSame([['bus' => null, 'handles' => null, 'method' => null, 'priority' => 0, 'sign' => false, 'transport' => 'async', 'from_transport' => null]], $definition->getTag('messenger.message_handler'));
     }
 
     public function testMessengerTransportConfiguration()
