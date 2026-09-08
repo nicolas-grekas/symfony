@@ -43,6 +43,7 @@ CHANGELOG
  * Register the security functions `is_granted()`, `is_authenticated()`, `is_fully_authenticated()`, `is_remember_me()` and `current_user()` in the validator expression language
  * Add `framework.profiler.excluded_paths` and `framework.profiler.excluded_http_codes` to skip profiling requests matching a path or answered with a given HTTP status code
  * Add `framework.property_access.wildcard_reads` option to read every element of a collection through a `[*]` path
+ * Add `framework.messenger.identity_stamps` to add a message id, a causation id and a correlation id to the dispatched messages
 
 8.1
 ---

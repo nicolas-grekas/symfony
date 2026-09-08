@@ -131,7 +131,9 @@ use Symfony\Component\Messenger\EventListener\ReleaseDeduplicationLockOnFailureL
 use Symfony\Component\Messenger\Handler\BatchHandlerInterface;
 use Symfony\Component\Messenger\MessageBus;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Middleware\AddIdentityStampsMiddleware;
 use Symfony\Component\Messenger\Middleware\DecodeFailedMessageMiddleware;
+use Symfony\Component\Messenger\Middleware\PropagateStampsMiddleware;
 use Symfony\Component\Messenger\Middleware\RouterContextMiddleware;
 use Symfony\Component\Messenger\Transport\Serialization\ClaimCheckSerializer;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
@@ -215,6 +217,7 @@ use Symfony\Component\TypeInfo\TypeResolver\PhpDocAwareReflectionTypeResolver;
 use Symfony\Component\TypeInfo\TypeResolver\StringTypeResolver;
 use Symfony\Component\TypeInfo\TypeResolver\TypeResolverInterface;
 use Symfony\Component\Uid\Factory\UuidFactory;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\Uuid47Transformer;
 use Symfony\Component\Uid\UuidV4;
 use Symfony\Component\Validator\Attribute\ExtendsValidationFor;
@@ -2531,6 +2534,8 @@ class FrameworkExtension extends Extension
             'before' => [
                 ['id' => 'add_default_stamps_middleware'],
                 ['id' => 'add_bus_name_stamp_middleware'],
+                ...($config['identity_stamps'] && class_exists(AddIdentityStampsMiddleware::class) ? [['id' => 'add_identity_stamps']] : []),
+                ...(class_exists(PropagateStampsMiddleware::class) ? [['id' => 'propagate_stamps']] : []),
                 ...($config['reject_redelivered_messages'] ? [['id' => 'reject_redelivered_message_middleware']] : []),
                 ['id' => 'dispatch_after_current_bus'],
                 ...(class_exists(DecodeFailedMessageMiddleware::class) ? [['id' => 'decode_failed_message_middleware']] : []),
@@ -2550,6 +2555,16 @@ class FrameworkExtension extends Extension
         }
         if (!class_exists(ReleaseDeduplicationLockOnFailureListener::class)) {
             $container->removeDefinition('messenger.failure.release_deduplication_lock_on_failure_listener');
+        }
+        if (!class_exists(PropagateStampsMiddleware::class)) {
+            $container->removeDefinition('messenger.middleware.propagate_stamps');
+        }
+        if (!$config['identity_stamps'] || !class_exists(AddIdentityStampsMiddleware::class)) {
+            $container->removeDefinition('messenger.middleware.add_identity_stamps');
+            $container->removeDefinition('messenger.message_id_generator');
+        } elseif (!ContainerBuilder::willBeAvailable('symfony/uid', Uuid::class, ['symfony/framework-bundle', 'symfony/messenger'])) {
+            $container->removeDefinition('messenger.message_id_generator');
+            $container->getDefinition('messenger.middleware.add_identity_stamps')->replaceArgument(0, null);
         }
 
         foreach ($config['buses'] as $busId => $bus) {

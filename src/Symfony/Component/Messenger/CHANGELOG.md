@@ -17,6 +17,12 @@ CHANGELOG
  * Add an optional `LoggingMiddleware` logging the processing time and memory usage of each message
  * Add the `messenger:show` command to list and inspect pending messages of a transport
  * Make the `messenger:consume` and `messenger:failed:retry` commands exit immediately when a second `SIGINT` is received
+ * Add `PropagatedStampInterface` to mark stamps that are copied onto the messages dispatched while handling the message carrying them
+ * Add `PropagateStampsMiddleware` to copy the propagated stamps of the message being handled onto nested dispatches
+ * Allow handler methods to declare arguments typed with `Envelope` or with a stamp class after the message argument
+ * Add `CorrelationStamp` to tie together the messages of one flow
+ * Add `MessageIdStamp` and `CausationStamp` to identify a message and the message whose handling caused it
+ * Add `AddIdentityStampsMiddleware` to add these identity stamps to the dispatched messages
 
 8.1
 ---
