@@ -27,7 +27,30 @@ class UndefinedExtensionHandler
         'web_profiler' => 'WebProfilerBundle',
     ];
 
-    public static function getErrorMessage(string $extensionName, ?string $loadingFilePath, string $namespaceOrAlias, array $foundExtensionNamespaces): string
+    /**
+     * The build parameter through which a bundle names the package that provides each
+     * configuration key it knows about, as a map of extension name to package name.
+     */
+    public const PACKAGES_PARAMETER = '.container.extension_packages';
+
+    /**
+     * Names the package to install for a configuration key a bundle has declared it knows about.
+     *
+     * @param array<string, string> $packages
+     */
+    public static function getPackageSuggestion(string $extensionName, array $packages): string
+    {
+        if (!isset($packages[$extensionName])) {
+            return '';
+        }
+
+        return \sprintf(' Try running "composer require %s".', $packages[$extensionName]);
+    }
+
+    /**
+     * @param array<string, string> $packages
+     */
+    public static function getErrorMessage(string $extensionName, ?string $loadingFilePath, string $namespaceOrAlias, array $foundExtensionNamespaces, array $packages = []): string
     {
         $message = '';
         if (isset(self::BUNDLE_EXTENSIONS[$extensionName])) {
@@ -39,6 +62,8 @@ class UndefinedExtensionHandler
             default => \sprintf('There is no extension able to load the configuration for "%s". ', $extensionName),
         };
 
-        return $message.\sprintf('Looked for namespace "%s", found "%s".', $namespaceOrAlias, $foundExtensionNamespaces ? implode('", "', $foundExtensionNamespaces) : 'none');
+        $message .= \sprintf('Looked for namespace "%s", found "%s".', $namespaceOrAlias, $foundExtensionNamespaces ? implode('", "', $foundExtensionNamespaces) : 'none');
+
+        return $message.self::getPackageSuggestion($extensionName, $packages);
     }
 }
