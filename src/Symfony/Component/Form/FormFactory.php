@@ -13,6 +13,7 @@ namespace Symfony\Component\Form;
 
 use Symfony\Component\Form\Extension\Core\Type\ColorType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\MoneyType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\PercentType;
@@ -21,9 +22,14 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Flow\FormFlowBuilderInterface;
 use Symfony\Component\Form\Flow\FormFlowInterface;
 use Symfony\Component\Form\Flow\FormFlowTypeInterface;
+use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
+use Symfony\Component\TypeInfo\Type\BuiltinType;
+use Symfony\Component\TypeInfo\TypeIdentifier;
 
 class FormFactory implements FormFactoryInterface
 {
+    private ?ReflectionExtractor $propertyTypeExtractor = null;
+
     public function __construct(
         private FormRegistryInterface $registry,
     ) {
@@ -85,6 +91,8 @@ class FormFactory implements FormFactoryInterface
     public function createBuilderForProperty(string $class, string $property, mixed $data = null, array $options = []): FormBuilderInterface
     {
         if (null === $guesser = $this->registry->getTypeGuesser()) {
+            $options = $this->addEmptyDataGuess($class, $property, TextType::class, $options);
+
             return $this->createNamedBuilder($property, TextType::class, $data, $options);
         }
 
@@ -121,7 +129,63 @@ class FormFactory implements FormFactoryInterface
             $options = array_merge($typeGuessOptions, $options, $attrs);
         }
 
+        $options = $this->addEmptyDataGuess($class, $property, $type, $options);
+
         return $this->createNamedBuilder($property, $type, $data, $options);
+    }
+
+    /**
+     * Derives "empty_data" from the type of the mapped property when it refuses null.
+     *
+     * Since "empty_data" is view data, the guess is expressed in view space and is
+     * restricted to types that map a scalar to a single control.
+     */
+    private function addEmptyDataGuess(string $class, string $property, string $type, array $options): array
+    {
+        if (\array_key_exists('empty_data', $options) || !($options['mapped'] ?? true) || isset($options['property_path'])) {
+            return $options;
+        }
+
+        if (!$this->isScalarInput($type)) {
+            return $options;
+        }
+
+        $this->propertyTypeExtractor ??= new ReflectionExtractor();
+
+        if (!($propertyType = $this->propertyTypeExtractor->getType($class, $property)) instanceof BuiltinType) {
+            return $options;
+        }
+
+        $emptyData = match ($propertyType->getTypeIdentifier()) {
+            TypeIdentifier::STRING => '',
+            TypeIdentifier::INT, TypeIdentifier::FLOAT => '0',
+            TypeIdentifier::BOOL => false,
+            default => null,
+        };
+
+        if (null !== $emptyData) {
+            $options['empty_data'] = $emptyData;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Tells whether the type maps a scalar to a single control, so that a scalar "empty_data" is meaningful for it.
+     */
+    private function isScalarInput(string $type): bool
+    {
+        $resolvedType = $this->registry->getType($type);
+
+        do {
+            $innerType = $resolvedType->getInnerType();
+
+            if ($innerType instanceof TextType || $innerType instanceof IntegerType || $innerType instanceof NumberType || $innerType instanceof MoneyType || $innerType instanceof PercentType) {
+                return true;
+            }
+        } while ($resolvedType = $resolvedType->getParent());
+
+        return false;
     }
 
     private function isTextInput(string $type): bool
