@@ -134,6 +134,19 @@ abstract class NodeDefinition implements NodeParentInterface
     }
 
     /**
+     * Declares that the value of this node must be known when the configuration is processed.
+     *
+     * Dynamic values, such as environment variables, are replaced by their actual value
+     * instead of being passed along as placeholders.
+     *
+     * @return $this
+     */
+    public function cannotBeDynamic(bool $cannotBeDynamic = true): static
+    {
+        return $this->attribute('cannot_be_dynamic', $cannotBeDynamic);
+    }
+
+    /**
      * Sets an attribute on the node.
      *
      * @return $this

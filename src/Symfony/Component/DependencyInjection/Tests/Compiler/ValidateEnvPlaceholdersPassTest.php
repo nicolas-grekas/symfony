@@ -314,6 +314,62 @@ class ValidateEnvPlaceholdersPassTest extends TestCase
         $this->assertSame('1', $container->getParameter('boolish'));
     }
 
+    public function testNodesThatCannotBeDynamicAreResolvedBeforeTheExtensionIsLoaded()
+    {
+        $_ENV['STATIC_LEVEL'] = 'notice';
+
+        $container = new ContainerBuilder();
+        $container->registerExtension($ext = new EnvExtension(new ConfigurationWithNodesThatCannotBeDynamic()));
+        $container->prependExtensionConfig('env_extension', [
+            'level' => '%env(STATIC_LEVEL)%',
+            'dynamic' => '%env(STATIC_LEVEL)%',
+        ]);
+
+        try {
+            (new MergeExtensionConfigurationPass())->process($container);
+        } finally {
+            unset($_ENV['STATIC_LEVEL']);
+        }
+
+        $config = $ext->getConfig();
+
+        $this->assertSame('notice', $config['level']);
+        $this->assertStringStartsWith('env_', $config['dynamic']);
+    }
+
+    public function testNodesThatCannotBeDynamicAcceptACastEnvVar()
+    {
+        $_ENV['STATIC_LOCALES'] = 'en,fr';
+
+        $container = new ContainerBuilder();
+        $container->registerExtension($ext = new EnvExtension(new ConfigurationWithNodesThatCannotBeDynamic()));
+        $container->prependExtensionConfig('env_extension', [
+            'locales' => '%env(csv:STATIC_LOCALES)%',
+        ]);
+
+        try {
+            $this->doProcess($container);
+        } finally {
+            unset($_ENV['STATIC_LOCALES']);
+        }
+
+        $this->assertSame(['en', 'fr'], $ext->getConfig()['locales']);
+    }
+
+    public function testNodesThatCannotBeDynamicReportTheOptionThatNeedsTheValue()
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The value of the configuration option "env_extension.level" must be known when the container is compiled: Environment variable not found: "UNDEFINED_STATIC".');
+
+        $container = new ContainerBuilder();
+        $container->registerExtension(new EnvExtension(new ConfigurationWithNodesThatCannotBeDynamic()));
+        $container->prependExtensionConfig('env_extension', [
+            'level' => '%env(UNDEFINED_STATIC)%',
+        ]);
+
+        $this->doProcess($container);
+    }
+
     private function doProcess(ContainerBuilder $container): void
     {
         (new MergeExtensionConfigurationPass())->process($container);
@@ -391,6 +447,25 @@ class ConfigurationWithArrayNodeRequiringOneElement implements ConfigurationInte
                 ->arrayNode('nodes')
                     ->isRequired()
                     ->requiresAtLeastOneElement()
+                    ->scalarPrototype()->end()
+                ->end()
+            ->end();
+
+        return $treeBuilder;
+    }
+}
+
+class ConfigurationWithNodesThatCannotBeDynamic implements ConfigurationInterface
+{
+    public function getConfigTreeBuilder(): TreeBuilder
+    {
+        $treeBuilder = new TreeBuilder('env_extension');
+        $treeBuilder->getRootNode()
+            ->children()
+                ->scalarNode('level')->attribute('cannot_be_dynamic', true)->end()
+                ->scalarNode('dynamic')->end()
+                ->arrayNode('locales')
+                    ->attribute('cannot_be_dynamic', true)
                     ->scalarPrototype()->end()
                 ->end()
             ->end();
