@@ -14,6 +14,7 @@ namespace Symfony\Component\Semaphore\Tests\DependencyInjection;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Semaphore\SemaphoreBundle;
@@ -33,6 +34,22 @@ class SemaphoreBundleExtensionTest extends TestCase
 
         $this->assertSame('semaphore.default.factory', (string) $container->getAlias('semaphore.factory'));
         $this->assertSame('semaphore.factory', (string) $container->getAlias(SemaphoreFactory::class));
+    }
+
+    public function testSemaphoreFromARootLevelDsn()
+    {
+        $config = (new \ReflectionMethod(ContainerConfigurator::class, 'extension'))->getParameters()[1]->getType();
+
+        if ($config instanceof \ReflectionNamedType && 'array' === $config->getName()) {
+            $this->markTestSkipped('symfony/dependency-injection >= 8.2 is required to pass a value that is not an array to an extension.');
+        }
+
+        $container = $this->createContainerFromFile('semaphore_dsn');
+
+        $this->assertTrue($container->hasDefinition('semaphore.default.factory'));
+        $storeDef = $container->getDefinition($container->getDefinition('semaphore.default.factory')->getArgument(0));
+        $this->assertSame([StoreFactory::class, 'createStore'], $storeDef->getFactory());
+        $this->assertSame('redis://example.com', $storeDef->getArgument(0));
     }
 
     public function testNamedSemaphores()
