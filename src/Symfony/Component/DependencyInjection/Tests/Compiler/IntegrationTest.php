@@ -60,6 +60,10 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\NestedAutowireLocatorCo
 use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorResourceTaggedWithCallable;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorResourceTaggedWithClosure;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorTaggedWithCallable;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ClosureConsumer;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\IteratorConsumer;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Loaders;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\LocatorConsumer;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithCallableInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithClosureInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithClosureMarkerInterface;
@@ -1703,5 +1707,79 @@ final class TagCollector implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $this->collectedTags = $container->findTaggedServiceIds('app.custom_tag');
+    }
+
+    public function testAClosureServiceCanBeInjected()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.loaders', Loaders::class)->setAutoconfigured(true);
+        $container->register(ClosureConsumer::class)
+            ->setAutowired(true)
+            ->setPublic(true)
+        ;
+
+        $container->compile();
+
+        try {
+            $consumer = $container->get(ClosureConsumer::class);
+
+            $this->assertSame(0, Loaders::$instantiations);
+
+            $this->assertTrue($consumer->loadAdults(20));
+            $this->assertFalse($consumer->loadAdults(10));
+            $this->assertSame(1, Loaders::$instantiations);
+        } finally {
+            Loaders::$instantiations = 0;
+        }
+    }
+
+    public function testClosureServicesAreCollectedByALocator()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.loaders', Loaders::class)->setAutoconfigured(true);
+        $container->register(LocatorConsumer::class)
+            ->setAutowired(true)
+            ->setPublic(true)
+        ;
+
+        $container->compile();
+
+        try {
+            $loaders = $container->get(LocatorConsumer::class)->getLoaders();
+
+            $this->assertSame(0, Loaders::$instantiations);
+
+            $this->assertTrue($loaders->get('adult')(20));
+            $this->assertTrue($loaders->get('minor')(10));
+
+            // a method declaring the tag twice is reachable under either key
+            $this->assertTrue($loaders->get('young')(10));
+            $this->assertSame(1, Loaders::$instantiations);
+        } finally {
+            Loaders::$instantiations = 0;
+        }
+    }
+
+    public function testClosureServicesAreCollectedByAnIterator()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.loaders', Loaders::class)->setAutoconfigured(true);
+        $container->register(IteratorConsumer::class)
+            ->setAutowired(true)
+            ->setPublic(true)
+        ;
+
+        $container->compile();
+
+        try {
+            $loaders = iterator_to_array($container->get(IteratorConsumer::class)->getLoaders());
+
+            // two services, although one of them declares the tag twice
+            $this->assertCount(2, $loaders);
+            $this->assertContainsOnlyInstancesOf(\Closure::class, $loaders);
+            $this->assertSame(0, Loaders::$instantiations);
+        } finally {
+            Loaders::$instantiations = 0;
+        }
     }
 }
