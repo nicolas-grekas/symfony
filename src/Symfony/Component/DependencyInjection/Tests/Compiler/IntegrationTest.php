@@ -61,9 +61,13 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorResou
 use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorResourceTaggedWithClosure;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\PrivateConstructorTaggedWithCallable;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ClosureConsumer;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ExporterConsumer;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ExporterInterface;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Exporters;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\IteratorConsumer;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Loaders;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\LocatorConsumer;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\PdfExporter;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithCallableInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithClosureInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ResourceTaggedWithClosureMarkerInterface;
@@ -1686,6 +1690,37 @@ class IntegrationTest extends TestCase
             $this->assertSame(1, Loaders::$instantiations);
         } finally {
             Loaders::$instantiations = 0;
+        }
+    }
+
+    public function testAClosureServiceCanBeAnAdapter()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.exporters', Exporters::class)->setAutoconfigured(true);
+        $container->register(PdfExporter::class)->addTag('app.exporter', ['format' => 'pdf']);
+        $container->register(ExporterConsumer::class)
+            ->setAutowired(true)
+            ->setPublic(true)
+        ;
+
+        $container->compile();
+
+        try {
+            $consumer = $container->get(ExporterConsumer::class);
+            $exporters = iterator_to_array($consumer->exporters);
+            ksort($exporters);
+
+            $this->assertSame(['csv', 'pdf', 'tsv'], array_keys($exporters));
+            $this->assertContainsOnlyInstancesOf(ExporterInterface::class, $exporters);
+            $this->assertSame(0, Exporters::$instantiations);
+
+            $this->assertSame('pdf:1', $exporters['pdf']->export([1]));
+            $this->assertSame('tsv:2', $exporters['tsv']->export([1, 2]));
+            $this->assertSame('csv:3', $consumer->csvExporter->export([1, 2, 3]));
+            $this->assertSame('html:4', ($consumer->htmlExporter)([1, 2, 3, 4]));
+            $this->assertSame(1, Exporters::$instantiations);
+        } finally {
+            Exporters::$instantiations = 0;
         }
     }
 

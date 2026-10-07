@@ -53,7 +53,7 @@ final class RegisterAsClosureAttributesPass implements CompilerPassInterface
                     continue;
                 }
 
-                if (!$method->getAttributes(AsClosureService::class, \ReflectionAttribute::IS_INSTANCEOF)) {
+                if (!$attributes = $method->getAttributes(AsClosureService::class, \ReflectionAttribute::IS_INSTANCEOF)) {
                     continue;
                 }
 
@@ -64,6 +64,12 @@ final class RegisterAsClosureAttributesPass implements CompilerPassInterface
                 $tag = ['method' => $method->name, 'declared_by' => $method->getDeclaringClass()->name];
 
                 if ($method->isAbstract()) {
+                    $attribute = $attributes[0]->newInstance();
+
+                    if (null !== $attribute->id || null !== $attribute->target) {
+                        throw new InvalidArgumentException(\sprintf('The "id" and "target" options of "#[AsClosureService]" cannot be used on the abstract method "%s::%s()": every service implementing it would claim them.', $r->name, $method->name));
+                    }
+
                     $container->registerForAutoconfiguration($r->name)
                         ->addTag(RegisterClosureServicesPass::TAG, $tag + ['inherited' => true]);
                 } elseif (!$definition->isAbstract()) {

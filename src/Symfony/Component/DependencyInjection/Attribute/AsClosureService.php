@@ -20,17 +20,16 @@ namespace Symfony\Component\DependencyInjection\Attribute;
 class AsClosureService
 {
     /**
-     * @param array<array<mixed>>|string[] $tags The tags to add to the closure service. A tag's attributes may be a
-     *                                           \Closure or a [class-string, method] callable that computes them from
-     *                                           the class-string of the service declaring the method
-     * @param string|null                  $id   The id of the closure service, defaulting to "<service id>::<method>"
-     * @param bool                         $lazy Whether to instantiate the service declaring the method only when the
-     *                                           closure is first called. Ignored for static methods
+     * @param array<array<mixed>>|string[] $tags   The tags to add to the closure service; a tag's attributes may be a \Closure or a [class-string, method] callable that computes them from the class-string of the service declaring the method
+     * @param string|null                  $id     The id of the closure service, defaulting to "<service id>::<method>"
+     * @param bool|class-string            $lazy   Whether to instantiate the service declaring the method only when the closure is first called (ignored for static methods), or the single-method interface to implement instead of returning a \Closure, which is always lazy
+     * @param string|null                  $target The name of the autowiring alias to register for the closure service, to be used with #[Target]
      */
     public function __construct(
         public array $tags = [],
         public ?string $id = null,
-        public bool $lazy = true,
+        public bool|string $lazy = true,
+        public ?string $target = null,
     ) {
     }
 }

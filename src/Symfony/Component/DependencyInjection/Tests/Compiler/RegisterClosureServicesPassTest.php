@@ -31,7 +31,11 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServices
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ClosureTagInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ClosureTagRule;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ConcreteRule;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\DuplicateTarget;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\ExporterInterface;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Exporters;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\FooRule;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\IdOnInterface;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\InheritsMethod;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Invokable;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\InvokableChild;
@@ -40,6 +44,7 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServices
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\InvokableOverride;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\KeyedTags;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\NonPublicMethod;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\NotAnInterfaceAdapter;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\NotInvokable;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\OtherCallableRule;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\OtherClosureTagRule;
@@ -48,6 +53,8 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServices
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\Rules;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\SubRule;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\SubRuleInterface;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\TargetOnInterface;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\RegisterClosureServicesPass\TooManyMethodsAdapter;
 
 #[CoversClass(RegisterAsClosureAttributesPass::class)]
 #[CoversClass(RegisterClosureServicesPass::class)]
@@ -443,6 +450,84 @@ class RegisterClosureServicesPassTest extends TestCase
         $this->expectExceptionMessage('Cannot register the closure service "app.rule.is_even"');
 
         $this->process($container);
+    }
+
+    public function testAClosureServiceCanImplementAnInterface()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.exporters', Exporters::class)->setAutoconfigured(true);
+
+        $this->process($container);
+
+        $definition = $container->getDefinition('app.exporters::exportCsv');
+        $this->assertSame(ExporterInterface::class, $definition->getClass());
+        $this->assertEquals([[new Reference('app.exporters'), 'exportCsv']], $definition->getArguments());
+        $this->assertTrue($definition->isLazy());
+
+        $definition = $container->getDefinition('app.exporters::exportTsv');
+        $this->assertSame(ExporterInterface::class, $definition->getClass());
+        $this->assertSame([[Exporters::class, 'exportTsv']], $definition->getArguments());
+        $this->assertTrue($definition->isLazy());
+    }
+
+    public function testTargetRegistersANamedAutowiringAlias()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.exporters', Exporters::class)->setAutoconfigured(true);
+
+        $this->process($container);
+
+        $this->assertSame('app.exporters::exportCsv', (string) $container->getAlias(ExporterInterface::class.' $csv'));
+        $this->assertSame('app.exporters::exportHtml', (string) $container->getAlias('Closure $htmlExporter'));
+        $this->assertSame('Closure $htmlExporter', (string) $container->getAlias('.Closure $html exporter'));
+    }
+
+    public function testDuplicateTargetsAreRejected()
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.exporters', Exporters::class)->setAutoconfigured(true);
+        $container->register('app.duplicate', DuplicateTarget::class)->setAutoconfigured(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(\sprintf('Cannot bind the target "csv" declared by "#[AsClosureService]" on "%s::export()" because the "%s $csv" alias already exists.', DuplicateTarget::class, ExporterInterface::class));
+
+        $this->process($container);
+    }
+
+    #[DataProvider('provideNamedInterfaces')]
+    public function testIdAndTargetAreRejectedOnInterfaceMethods(string $interface)
+    {
+        $container = new ContainerBuilder();
+        $this->registerInterface($container, $interface);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(\sprintf('The "id" and "target" options of "#[AsClosureService]" cannot be used on the abstract method "%s::evaluate()": every service implementing it would claim them.', $interface));
+
+        $this->process($container);
+    }
+
+    public static function provideNamedInterfaces(): iterable
+    {
+        yield 'id' => [IdOnInterface::class];
+        yield 'target' => [TargetOnInterface::class];
+    }
+
+    #[DataProvider('provideInvalidAdapters')]
+    public function testLazyMustBeASingleMethodInterface(string $class, string $method, string $given)
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.adapter', $class)->setAutoconfigured(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(\sprintf('The "lazy" option of "#[AsClosureService]" on "%s::%s()" must be a boolean or an interface that has exactly one method, "%s" given.', $class, $method, $given));
+
+        $this->process($container);
+    }
+
+    public static function provideInvalidAdapters(): iterable
+    {
+        yield 'not an interface' => [NotAnInterfaceAdapter::class, 'count', \ArrayObject::class];
+        yield 'several methods' => [TooManyMethodsAdapter::class, 'current', \Iterator::class];
     }
 
     private function process(ContainerBuilder $container): void

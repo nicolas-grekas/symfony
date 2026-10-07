@@ -12,6 +12,7 @@
 namespace Symfony\Component\DependencyInjection\Compiler;
 
 use Symfony\Component\DependencyInjection\Attribute\AsClosureService;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
@@ -92,10 +93,28 @@ final class RegisterClosureServicesPass implements CompilerPassInterface
             throw new InvalidArgumentException(\sprintf('Cannot register the closure service "%s" declared by "#[AsClosureService]" on "%s::%s()" because a service with that id already exists.', $id, $class->name, $method));
         }
 
-        $closureService = $container->register($id, 'Closure')
+        if (\is_string($interface = $attribute->lazy)) {
+            $r = $container->getReflectionClass($interface, false);
+
+            if (!$r?->isInterface() || 1 !== \count($r->getMethods())) {
+                throw new InvalidArgumentException(\sprintf('The "lazy" option of "#[AsClosureService]" on "%s::%s()" must be a boolean or an interface that has exactly one method, "%s" given.', $class->name, $method, $interface));
+            }
+        }
+
+        $closureService = $container->register($id, \is_string($interface) ? $interface : 'Closure')
             ->setFactory(['Closure', 'fromCallable'])
             ->setArguments([$static ? [$class->name, $method] : [new Reference($serviceId), $method]])
-            ->setLazy($attribute->lazy && !$static);
+            ->setLazy(\is_string($interface) || $attribute->lazy && !$static);
+
+        if (null !== $attribute->target) {
+            $alias = $closureService->getClass().' $'.(new Target($attribute->target))->getParsedName();
+
+            if ($container->hasAlias($alias)) {
+                throw new InvalidArgumentException(\sprintf('Cannot bind the target "%s" declared by "#[AsClosureService]" on "%s::%s()" because the "%s" alias already exists.', $attribute->target, $class->name, $method, $alias));
+            }
+
+            $container->registerAliasForArgument($id, $closureService->getClass(), $attribute->target);
+        }
 
         if (!array_is_list($attribute->tags)) {
             throw new InvalidArgumentException(\sprintf('The "tags" of "#[AsClosureService]" on "%s::%s()" must be a list of tags, as everywhere else tags are declared, not a map keyed by tag name.', $class->name, $method));
