@@ -1637,77 +1637,6 @@ class IntegrationTest extends TestCase
 
         self::assertSame(['test' => [['attribute' => 'static']]], $collector->collectedTags);
     }
-}
-
-class ServiceSubscriberStub implements ServiceSubscriberInterface
-{
-    public ContainerInterface $container;
-
-    public function __construct(ContainerInterface $container)
-    {
-        $this->container = $container;
-    }
-
-    public static function getSubscribedServices(): array
-    {
-        return [];
-    }
-}
-
-class DecoratedServiceSubscriber
-{
-    public $inner;
-}
-
-class DecoratedServiceLocator implements ServiceProviderInterface
-{
-    private ServiceLocator $locator;
-
-    public function __construct(ServiceLocator $locator)
-    {
-        $this->locator = $locator;
-    }
-
-    public function get($id): mixed
-    {
-        return $this->locator->get($id);
-    }
-
-    public function has($id): bool
-    {
-        return $this->locator->has($id);
-    }
-
-    public function getProvidedServices(): array
-    {
-        return $this->locator->getProvidedServices();
-    }
-}
-
-class IntegrationTestStub extends IntegrationTestStubParent
-{
-}
-
-class IntegrationTestStubParent
-{
-    public function enableSummer($enable)
-    {
-        // methods used in calls - added here to prevent errors for not existing
-    }
-
-    public function setSunshine($type)
-    {
-    }
-}
-
-final class TagCollector implements CompilerPassInterface
-{
-    public array $collectedTags;
-
-    public function process(ContainerBuilder $container): void
-    {
-        $this->collectedTags = $container->findTaggedServiceIds('app.custom_tag');
-    }
 
     public function testAClosureServiceCanBeInjected()
     {
@@ -1781,5 +1710,76 @@ final class TagCollector implements CompilerPassInterface
         } finally {
             Loaders::$instantiations = 0;
         }
+    }
+}
+
+class ServiceSubscriberStub implements ServiceSubscriberInterface
+{
+    public ContainerInterface $container;
+
+    public function __construct(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+
+    public static function getSubscribedServices(): array
+    {
+        return [];
+    }
+}
+
+class DecoratedServiceSubscriber
+{
+    public $inner;
+}
+
+class DecoratedServiceLocator implements ServiceProviderInterface
+{
+    private ServiceLocator $locator;
+
+    public function __construct(ServiceLocator $locator)
+    {
+        $this->locator = $locator;
+    }
+
+    public function get($id): mixed
+    {
+        return $this->locator->get($id);
+    }
+
+    public function has($id): bool
+    {
+        return $this->locator->has($id);
+    }
+
+    public function getProvidedServices(): array
+    {
+        return $this->locator->getProvidedServices();
+    }
+}
+
+class IntegrationTestStub extends IntegrationTestStubParent
+{
+}
+
+class IntegrationTestStubParent
+{
+    public function enableSummer($enable)
+    {
+        // methods used in calls - added here to prevent errors for not existing
+    }
+
+    public function setSunshine($type)
+    {
+    }
+}
+
+final class TagCollector implements CompilerPassInterface
+{
+    public array $collectedTags;
+
+    public function process(ContainerBuilder $container): void
+    {
+        $this->collectedTags = $container->findTaggedServiceIds('app.custom_tag');
     }
 }
