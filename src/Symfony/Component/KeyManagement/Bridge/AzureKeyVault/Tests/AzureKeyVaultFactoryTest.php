@@ -20,6 +20,7 @@ use Symfony\Component\KeyManagement\Bridge\AzureKeyVault\ClientCredentialsTokenP
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Exception\InvalidArgumentException;
 use Symfony\Component\KeyManagement\Exception\UnsupportedSchemeException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AzureKeyVaultFactoryTest extends TestCase
 {
@@ -164,5 +165,38 @@ class AzureKeyVaultFactoryTest extends TestCase
         $this->assertCount(2, $urls);
         $this->assertStringStartsWith('https://login.microsoftonline.com/t/oauth2/', $urls[0]);
         $this->assertStringStartsWith('https://my-vault.vault.azure.net/keys/app/encrypt', $urls[1]);
+    }
+
+    public function testTheGivenHttpClientKeepsItsOwnTimeouts()
+    {
+        $requests = [];
+        $client = new MockHttpClient(static function (string $method, string $url, array $options) use (&$requests): MockResponse {
+            $requests[] = [$options['timeout'], $options['max_duration'], $options['max_redirects']];
+
+            return str_contains($url, '/oauth2/')
+                ? new MockResponse(json_encode(['access_token' => 'TOKEN', 'expires_in' => 3600]))
+                : new MockResponse(json_encode(['kid' => 'https://my-vault.vault.azure.net/keys/app/v1', 'value' => 'CipherFromAzure']));
+        });
+
+        $kms = (new AzureKeyVaultFactory($client->withOptions(['timeout' => 2.5, 'max_duration' => 7.5, 'max_redirects' => 3])))->create(Dsn::fromString('azure-keyvault://id:secret@my-vault.vault.azure.net?tenant=t'));
+        $kms->encrypt('app', 'hello');
+
+        $this->assertSame([[2.5, 7.5, 3], [2.5, 7.5, 3]], $requests);
+    }
+
+    public function testTheClientBuiltWhenNoneIsGivenHasTimeoutsAndNoRedirects()
+    {
+        $kms = (new AzureKeyVaultFactory())->create(Dsn::fromString('azure-keyvault://id:secret@my-vault.vault.azure.net?tenant=t'));
+        $tokens = (new \ReflectionProperty(AzureKeyVault::class, 'tokens'))->getValue($kms);
+
+        $this->assertSame([5.0, 10.0, 0], self::boundsOf((new \ReflectionProperty(AzureKeyVault::class, 'client'))->getValue($kms)));
+        $this->assertSame([5.0, 10.0, 0], self::boundsOf((new \ReflectionProperty(ClientCredentialsTokenProvider::class, 'client'))->getValue($tokens)));
+    }
+
+    private static function boundsOf(HttpClientInterface $client): array
+    {
+        $options = (new \ReflectionProperty($client, 'defaultOptions'))->getValue($client);
+
+        return [$options['timeout'], $options['max_duration'], $options['max_redirects']];
     }
 }

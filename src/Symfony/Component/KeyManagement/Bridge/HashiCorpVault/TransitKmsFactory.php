@@ -32,7 +32,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *
  * The HTTP client given to the factory is what the DSN's base URI is applied
  * to, so that its timeout, retry policy or certificates reach Vault; without
- * one, a client is built for the base URI alone.
+ * one, a client is built for the base URI.
  *
  * @author Florent Morselli <florent.morselli@spomky-labs.com>
  *
@@ -41,9 +41,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class TransitKmsFactory implements KmsFactoryInterface
 {
     private const string SCHEME = 'hashicorp-vault-transit';
+    private const array DEFAULT_HTTP_OPTIONS = ['timeout' => 5, 'max_duration' => 10, 'max_redirects' => 0];
 
     /**
-     * @param HttpClientInterface|null $client The client the DSN's base URI is applied to, so that a timeout, a retry policy or the profiler set on the application's client reach the KMS; a client of its own is built when none is given
+     * @param HttpClientInterface|null $client The client the DSN's base URI is applied to, so that a timeout, a retry policy or the profiler set on the application's client reach the KMS; without one, a client is built that times out after 5 idle seconds or 10 seconds in total and does not follow redirects
      */
     public function __construct(
         private readonly ?HttpClientInterface $client = null,
@@ -104,6 +105,6 @@ final class TransitKmsFactory implements KmsFactoryInterface
 
     private function scopedClient(string $baseUri): HttpClientInterface
     {
-        return $this->client?->withOptions(['base_uri' => $baseUri]) ?? HttpClient::createForBaseUri($baseUri);
+        return $this->client?->withOptions(['base_uri' => $baseUri]) ?? HttpClient::create(['base_uri' => $baseUri] + self::DEFAULT_HTTP_OPTIONS);
     }
 }

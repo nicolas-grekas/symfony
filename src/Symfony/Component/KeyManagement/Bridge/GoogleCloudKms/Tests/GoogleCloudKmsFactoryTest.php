@@ -16,9 +16,11 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\KeyManagement\Bridge\GoogleCloudKms\GoogleCloudKms;
 use Symfony\Component\KeyManagement\Bridge\GoogleCloudKms\GoogleCloudKmsFactory;
+use Symfony\Component\KeyManagement\Bridge\GoogleCloudKms\ServiceAccountTokenProvider;
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Exception\InvalidArgumentException;
 use Symfony\Component\KeyManagement\Exception\UnsupportedSchemeException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GoogleCloudKmsFactoryTest extends TestCase
 {
@@ -114,5 +116,39 @@ class GoogleCloudKmsFactoryTest extends TestCase
         $this->assertCount(2, $urls);
         $this->assertSame('https://oauth2.googleapis.com/token', $urls[0]);
         $this->assertSame('https://kms.local:8443/v2/'.$key.':encrypt', $urls[1]);
+    }
+
+    public function testTheGivenHttpClientKeepsItsOwnTimeouts()
+    {
+        $key = 'projects/my-proj/locations/global/keyRings/app/cryptoKeys/master';
+        $requests = [];
+        $client = new MockHttpClient(static function (string $method, string $url, array $options) use (&$requests, $key): MockResponse {
+            $requests[] = [$options['timeout'], $options['max_duration'], $options['max_redirects']];
+
+            return str_contains($url, 'oauth2.googleapis.com')
+                ? new MockResponse(json_encode(['access_token' => 'TOKEN', 'expires_in' => 3600]))
+                : new MockResponse(json_encode(['name' => $key.'/cryptoKeyVersions/1', 'ciphertext' => 'CipherFromGcp']));
+        });
+
+        $kms = (new GoogleCloudKmsFactory($client->withOptions(['timeout' => 2.5, 'max_duration' => 7.5, 'max_redirects' => 3])))->create(Dsn::fromString('gcp-kms://default?credentials='.urlencode($this->credentialsPath)));
+        $kms->encrypt($key, 'hello');
+
+        $this->assertSame([[2.5, 7.5, 3], [2.5, 7.5, 3]], $requests);
+    }
+
+    public function testTheClientBuiltWhenNoneIsGivenHasTimeoutsAndNoRedirects()
+    {
+        $kms = (new GoogleCloudKmsFactory())->create(Dsn::fromString('gcp-kms://default?credentials='.urlencode($this->credentialsPath)));
+        $tokens = (new \ReflectionProperty(GoogleCloudKms::class, 'tokens'))->getValue($kms);
+
+        $this->assertSame([5.0, 10.0, 0], self::boundsOf((new \ReflectionProperty(GoogleCloudKms::class, 'client'))->getValue($kms)));
+        $this->assertSame([5.0, 10.0, 0], self::boundsOf((new \ReflectionProperty(ServiceAccountTokenProvider::class, 'client'))->getValue($tokens)));
+    }
+
+    private static function boundsOf(HttpClientInterface $client): array
+    {
+        $options = (new \ReflectionProperty($client, 'defaultOptions'))->getValue($client);
+
+        return [$options['timeout'], $options['max_duration'], $options['max_redirects']];
     }
 }
