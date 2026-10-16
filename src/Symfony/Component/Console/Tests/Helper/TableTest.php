@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Formatter\OutputFormatter;
+use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\TableCell;
 use Symfony\Component\Console\Helper\TableCellStyle;
@@ -1505,6 +1506,20 @@ class TableTest extends TestCase
             TABLE;
 
         $this->assertSame($expected, $this->getOutputContent($output));
+    }
+
+    public function testColumnMaxWidthPreservesAnsiSequences()
+    {
+        $output = new StreamOutput($this->stream, StreamOutput::VERBOSITY_NORMAL, true);
+        $table = new Table($output);
+        $table->setColumnMaxWidth(0, 5);
+        $table->setRows([["\e[0;38;5;208mhello world\e[m"]]);
+        $table->render();
+        rewind($this->stream);
+        $result = stream_get_contents($this->stream);
+
+        $this->assertStringContainsString("\e[0;38;5;208m", $result);
+        $this->assertSame("+-------+\n| hello |\n| world |\n+-------+\n", Helper::removeDecoration($output->getFormatter(), $result));
     }
 
     public function testColumnMaxWidths()
