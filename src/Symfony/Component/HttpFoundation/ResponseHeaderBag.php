@@ -28,6 +28,8 @@ class ResponseHeaderBag extends HeaderBag
     protected $cookies = [];
     protected $headerNames = [];
 
+    private array $cookiePartitions = [];
+
     public function __construct(array $headers = [])
     {
         parent::__construct($headers);
@@ -112,7 +114,7 @@ class ResponseHeaderBag extends HeaderBag
 
         if ('set-cookie' === $uniqueKey) {
             if ($replace) {
-                $this->cookies = [];
+                $this->cookies = $this->cookiePartitions = [];
             }
             foreach ((array) $values as $cookie) {
                 $this->setCookie(Cookie::fromString($cookie));
@@ -143,7 +145,7 @@ class ResponseHeaderBag extends HeaderBag
         unset($this->headerNames[$uniqueKey]);
 
         if ('set-cookie' === $uniqueKey) {
-            $this->cookies = [];
+            $this->cookies = $this->cookiePartitions = [];
 
             return;
         }
@@ -175,6 +177,7 @@ class ResponseHeaderBag extends HeaderBag
     public function setCookie(Cookie $cookie)
     {
         $this->cookies[$cookie->getDomain() ?? ''][$cookie->getPath()][$cookie->getName()] = $cookie;
+        $this->cookiePartitions[$cookie->getDomain() ?? ''][$cookie->getPath()][$cookie->getName()][(int) $cookie->isPartitioned()] = $cookie;
         $this->headerNames['set-cookie'] = 'Set-Cookie';
     }
 
@@ -187,13 +190,13 @@ class ResponseHeaderBag extends HeaderBag
     {
         $path ??= '/';
 
-        unset($this->cookies[$domain ?? ''][$path][$name]);
+        unset($this->cookies[$domain ?? ''][$path][$name], $this->cookiePartitions[$domain ?? ''][$path][$name]);
 
         if (empty($this->cookies[$domain ?? ''][$path])) {
-            unset($this->cookies[$domain ?? ''][$path]);
+            unset($this->cookies[$domain ?? ''][$path], $this->cookiePartitions[$domain ?? ''][$path]);
 
             if (empty($this->cookies[$domain ?? ''])) {
-                unset($this->cookies[$domain ?? '']);
+                unset($this->cookies[$domain ?? ''], $this->cookiePartitions[$domain ?? '']);
             }
         }
 
@@ -220,10 +223,15 @@ class ResponseHeaderBag extends HeaderBag
         }
 
         $flattenedCookies = [];
-        foreach ($this->cookies as $path) {
-            foreach ($path as $cookies) {
-                foreach ($cookies as $cookie) {
-                    $flattenedCookies[] = $cookie;
+        foreach ($this->cookies as $domain => $paths) {
+            foreach ($paths as $path => $cookies) {
+                foreach ($cookies as $name => $cookie) {
+                    $partitions = $this->cookiePartitions[$domain][$path][$name] ?? [];
+                    $partitions[(int) $cookie->isPartitioned()] = $cookie;
+
+                    foreach ($partitions as $cookie) {
+                        $flattenedCookies[] = $cookie;
+                    }
                 }
             }
         }

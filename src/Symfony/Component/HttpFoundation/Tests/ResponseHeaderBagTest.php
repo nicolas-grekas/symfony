@@ -197,6 +197,82 @@ class ResponseHeaderBagTest extends TestCase
         $this->assertArrayHasKey('foo', $cookies['']['/']);
     }
 
+    public function testSubclassCanReplaceProtectedCookies()
+    {
+        $bag = new class extends ResponseHeaderBag {
+            public function replaceCookies(array $cookies): void
+            {
+                $this->cookies = $cookies;
+            }
+        };
+        $cookie = Cookie::create('foo', 'bar');
+        $bag->replaceCookies(['' => ['/' => ['foo' => $cookie]]]);
+
+        $this->assertSame([$cookie], $bag->getCookies());
+
+        $bag->setCookie(Cookie::create('foo', 'old'));
+        $bag->replaceCookies(['' => ['/' => ['foo' => $cookie]]]);
+
+        $this->assertSame([$cookie], $bag->getCookies());
+
+        $bag->replaceCookies([]);
+
+        $this->assertSame([], $bag->getCookies());
+    }
+
+    public function testCookiesWithDifferentPartitions()
+    {
+        $bag = new ResponseHeaderBag();
+        $unpartitioned = Cookie::create('auth', 'old')->withPartitioned(false);
+        $partitioned = Cookie::create('auth', 'new')->withPartitioned(true);
+        $bag->setCookie($unpartitioned);
+        $bag->setCookie($partitioned);
+
+        $this->assertSame([$unpartitioned, $partitioned], $bag->getCookies());
+        $this->assertSame(['' => ['/' => ['auth' => $partitioned]]], $bag->getCookies(ResponseHeaderBag::COOKIES_ARRAY));
+        $this->assertSame([(string) $unpartitioned, (string) $partitioned], $bag->all('set-cookie'));
+
+        $updated = $partitioned->withValue('updated');
+        $bag->setCookie($updated);
+
+        $this->assertSame([$unpartitioned, $updated], $bag->getCookies());
+        $this->assertSame(['' => ['/' => ['auth' => $updated]]], $bag->getCookies(ResponseHeaderBag::COOKIES_ARRAY));
+
+        $bag->removeCookie('auth');
+
+        $this->assertSame([], $bag->getCookies());
+        $this->assertSame([], $bag->getCookies(ResponseHeaderBag::COOKIES_ARRAY));
+        $this->assertArrayNotHasKey('set-cookie', $bag->allPreserveCase());
+    }
+
+    public function testClearingCookiesWithDifferentPartitions()
+    {
+        $bag = new ResponseHeaderBag();
+        $bag->clearCookie('auth');
+        $bag->setCookie($partitioned = Cookie::create('auth', 'new')->withPartitioned(true));
+
+        $this->assertCount(2, $bag->getCookies());
+        $this->assertTrue($bag->getCookies()[0]->isCleared());
+        $this->assertSame($partitioned, $bag->getCookies()[1]);
+    }
+
+    public function testReplacingCookieHeaderWithDifferentPartitions()
+    {
+        $bag = new ResponseHeaderBag();
+        $bag->set('Set-Cookie', ['auth=old; path=/', 'auth=new; path=/; partitioned']);
+
+        $this->assertCount(2, $bag->getCookies());
+
+        $bag->set('Set-Cookie', 'other=value; path=/');
+
+        $this->assertCount(1, $bag->getCookies());
+        $this->assertSame('other', $bag->getCookies()[0]->getName());
+
+        $bag->remove('Set-Cookie');
+
+        $this->assertSame([], $bag->getCookies());
+    }
+
     public function testRemoveCookie()
     {
         $bag = new ResponseHeaderBag();
