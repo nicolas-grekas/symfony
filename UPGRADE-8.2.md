@@ -135,6 +135,7 @@ Filesystem
 Form
 ----
 
+ * Constraints on compound form data are skipped when a submitted descendant fails transformation. Constraints on synchronized sibling fields still run.
  * Add `createStepGroup()` method to `FormFlowBuilderInterface`; implementations not extending the default `FormFlowBuilder` must implement it
  * Add `setGroup()`, `addStep()` and `removeStep()` methods to `StepFlowBuilderConfigInterface`; implementations not extending the default `StepFlowBuilder` must implement them
  * Add `isGroup()`, `getSteps()`, `hasStep()` and `getStep()` methods to `StepFlowConfigInterface`; implementations not extending the default `StepFlowBuilder` must implement them

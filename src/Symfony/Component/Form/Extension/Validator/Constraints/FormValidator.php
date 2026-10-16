@@ -58,15 +58,16 @@ class FormValidator extends ConstraintValidator
             }
 
             $data = $form->getData();
+            $dataSynchronized = self::isDataSynchronized($form);
             // Validate the data of the root form and of the current step of a flow against its own constraints
-            $validateDataGraph = ($form->isRoot() || (self::isCurrentFlowStep($form) && !$config->getInheritData()))
+            $validateDataGraph = $dataSynchronized && ($form->isRoot() || (self::isCurrentFlowStep($form) && !$config->getInheritData()))
                 && (\is_object($data) || \is_array($data))
                 && (\is_array($groups) || ($groups instanceof GroupSequence && $groups->groups))
             ;
 
             // Validate the data against the constraints defined in the form
             /** @var Constraint[] $constraints */
-            $constraints = $config->getOption('constraints', []);
+            $constraints = $dataSynchronized ? $config->getOption('constraints', []) : [];
 
             $hasChildren = $form->count() > 0;
 
@@ -338,5 +339,20 @@ class FormValidator extends ConstraintValidator
 
             return false;
         });
+    }
+
+    private static function isDataSynchronized(FormInterface $form): bool
+    {
+        if (!$form->isSynchronized()) {
+            return false;
+        }
+
+        foreach ($form as $child) {
+            if ($child->isSubmitted() && !self::isDataSynchronized($child)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
