@@ -30,6 +30,29 @@ use Symfony\Component\KeyManagement\Bridge\DoctrineOrm\SchemaListener\DataKeySto
 #[RequiresPhpExtension('pdo_sqlite')]
 class DataKeyStoreSchemaListenerTest extends TestCase
 {
+    public function testExplicitSchemaOperationsDoNotConfigureTheStore()
+    {
+        foreach (['create', 'drop'] as $operation) {
+            $entityManager = $this->createMock(EntityManagerInterface::class);
+            $entityManager->expects($this->never())->method('getConnection');
+            $event = new class($entityManager, new Schema(), $operation) extends GenerateSchemaEventArgs {
+                public function __construct(EntityManagerInterface $entityManager, Schema $schema, private readonly string $operation)
+                {
+                    parent::__construct($entityManager, $schema);
+                }
+
+                public function getOperation(): ?string
+                {
+                    return $this->operation;
+                }
+            };
+
+            (new DataKeyStoreSchemaListener([]))->postGenerateSchema($event);
+
+            $this->assertSame([], $event->getSchema()->getTables());
+        }
+    }
+
     public function testTheTableTheStoreNeedsJoinsTheSchema()
     {
         $connection = self::connection();

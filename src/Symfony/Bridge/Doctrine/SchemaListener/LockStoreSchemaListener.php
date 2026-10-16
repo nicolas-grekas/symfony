@@ -27,6 +27,10 @@ final class LockStoreSchemaListener extends AbstractSchemaListener
 
     public function postGenerateSchema(GenerateSchemaEventArgs $event): void
     {
+        if (method_exists($event, 'getOperation') && \in_array($event->getOperation(), ['create', 'drop'], true)) {
+            return;
+        }
+
         $connection = $event->getEntityManager()->getConnection();
         $schema = $event->getSchema();
 

@@ -4,6 +4,7 @@ CHANGELOG
 8.2
 ---
 
+ * Exclude standalone tables from explicit ORM schema create and drop operations
  * Add the `IterableToArrayCollection` transform for the ObjectMapper component
  * Throw a `ConstraintDefinitionException` when a field checked by `UniqueEntity` holds an array or is a to-many association
  * Allow using closures with the `#[MapEntity]` attribute

@@ -69,6 +69,10 @@ DependencyInjection
 DoctrineBridge
 --------------
 
+ * [BC BREAK] With Doctrine ORM versions that expose `GenerateSchemaEventArgs::getOperation()`, schema listeners no longer add standalone tables during `SchemaTool` create and drop operations.
+   This affects Messenger transports and inboxes, cache items, locks, sessions, remember-me tokens and data keys.
+   Schema updates and direct schema generation still include these tables.
+   If you use `auto_setup: false`, run `messenger:setup-transports` to create your Doctrine transport and inbox tables
  * `UniqueEntity` now throws a `ConstraintDefinitionException` when a checked field holds an array or is a to-many
    association and the default `findBy` repository method is used. Such fields were silently validated against a
    query that could not match. Use the `repositoryMethod` option to provide a method that can query them
