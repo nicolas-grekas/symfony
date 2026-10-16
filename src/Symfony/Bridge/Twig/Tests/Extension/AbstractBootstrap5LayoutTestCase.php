@@ -39,6 +39,34 @@ use Symfony\Component\Form\FormError;
  */
 abstract class AbstractBootstrap5LayoutTestCase extends AbstractBootstrap4LayoutTestCase
 {
+    /**
+     * @dataProvider provideExpandedChoiceErrors
+     */
+    public function testExpandedChoiceErrors(bool $multiple, bool $parentError)
+    {
+        $form = $this->factory->createNamed('choice', ChoiceType::class, null, [
+            'choices' => ['First' => 'first', 'Second' => 'second'],
+            'csrf_protection' => false,
+            'expanded' => true,
+            'multiple' => $multiple,
+        ]);
+        $form->submit($multiple ? ['first'] : 'first');
+        $form->get('0')->addError(new FormError('Invalid choice.'));
+        if ($parentError) {
+            $form->addError(new FormError('Invalid selection.'));
+        }
+
+        $html = $this->renderWidget($form->createView());
+
+        $this->assertMatchesXpath($html, '//input[@id="choice_0"][contains(@class, "is-invalid")]');
+        $this->assertMatchesXpath($html, '//input[@id="choice_1"]['.($parentError ? '' : 'not(').'contains(@class, "is-invalid")'.($parentError ? '' : ')').']');
+    }
+
+    public static function provideExpandedChoiceErrors(): array
+    {
+        return [[false, false], [true, false], [false, true], [true, true]];
+    }
+
     public function testRow()
     {
         $form = $this->factory->createNamed('')->add('name', TextType::class);
