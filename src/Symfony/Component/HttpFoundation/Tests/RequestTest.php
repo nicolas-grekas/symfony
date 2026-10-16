@@ -1602,6 +1602,33 @@ b'])]
         $this->assertEquals('', $request->getBasePath());
     }
 
+    #[DataProvider('provideRewrittenPathInfo')]
+    public function testRewrittenPathInfoPreservesUriEncoding(string $requestUri, string $pathInfo, string $baseUrl, string $expectedPathInfo)
+    {
+        $request = Request::create('https://example.test'.$requestUri, 'GET', [], [], [], [
+            'SCRIPT_FILENAME' => '/var/www/middleware.php',
+            'SCRIPT_NAME' => '/middleware.php',
+            'PHP_SELF' => '/middleware.php'.$pathInfo,
+        ]);
+        $request->server->set('PATH_INFO', $pathInfo);
+
+        $this->assertSame($baseUrl, $request->getBaseUrl());
+        $this->assertSame($expectedPathInfo, $request->getPathInfo());
+        $this->assertSame('https://example.test'.$requestUri, $request->getUri());
+    }
+
+    public static function provideRewrittenPathInfo(): iterable
+    {
+        yield 'rewritten script' => ['/middleware/data/uuid.json', '/data/uuid.json', '/middleware', '/data/uuid.json'];
+        yield 'query string' => ['/middleware/data?q=value', '/data', '/middleware', '/data'];
+        yield 'encoded space' => ['/middleware/a%20b', '/a b', '/middleware', '/a%20b'];
+        yield 'encoded slash' => ['/middleware/a%2Fb', '/a/b', '/middleware', '/a%2Fb'];
+        yield 'double encoding' => ['/middleware/%2566oo', '/%66oo', '/middleware', '/%2566oo'];
+        yield 'encoded base' => ['/m%C3%A9dia/foo', '/foo', '/m%C3%A9dia', '/foo'];
+        yield 'mismatched path info' => ['/middleware/foo', '/other', '', '/middleware/foo'];
+        yield 'visible script' => ['/middleware.php/foo', '/foo', '/middleware.php', '/foo'];
+    }
+
     public function testGetPathInfo()
     {
         $request = new Request();

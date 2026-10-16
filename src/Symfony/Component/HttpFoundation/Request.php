@@ -2001,6 +2001,13 @@ class Request
             return $prefix;
         }
 
+        if ($pathInfo = $this->server->get('PATH_INFO')) {
+            $decodedPath = rawurldecode(explode('?', $requestUri, 2)[0]);
+            if (str_starts_with($pathInfo, '/') && str_ends_with($decodedPath, $pathInfo)) {
+                return $this->getUrlencodedPrefix($requestUri, substr($decodedPath, 0, -\strlen($pathInfo))) ?? '';
+            }
+        }
+
         if ($baseUrl && null !== $prefix = $this->getUrlencodedPrefix($requestUri, rtrim(\dirname($baseUrl), '/'.\DIRECTORY_SEPARATOR).'/')) {
             // directory portion of $baseUrl matches
             return rtrim($prefix, '/'.\DIRECTORY_SEPARATOR);
