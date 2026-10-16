@@ -38,6 +38,9 @@ class HtmlErrorRenderer implements ErrorRendererInterface
     private string $charset;
     private FileLinkFormatter $fileLinkFormat;
     private string|\Closure $outputBuffer;
+    private string|\Closure|null $scriptNonce = null;
+    private string|\Closure|null $styleNonce = null;
+    private array $nonces = [null, null];
 
     private static string $template = 'views/error.html.php';
 
@@ -57,6 +60,17 @@ class HtmlErrorRenderer implements ErrorRendererInterface
         $this->charset = $charset ?: (\ini_get('default_charset') ?: 'UTF-8');
         $this->fileLinkFormat = $fileLinkFormat instanceof FileLinkFormatter ? $fileLinkFormat : new FileLinkFormatter($fileLinkFormat);
         $this->outputBuffer = \is_string($outputBuffer) ? $outputBuffer : $outputBuffer(...);
+    }
+
+    /**
+     * Sets CSP nonces for the renderer's scripts and styles.
+     *
+     * Closures resolve once per render. Omit $styleNonce to use $scriptNonce for both.
+     */
+    public function setNonce(string|\Closure|null $scriptNonce, string|\Closure|null $styleNonce = null): void
+    {
+        $this->scriptNonce = $scriptNonce;
+        $this->styleNonce = $styleNonce ?? $scriptNonce;
     }
 
     public function render(\Throwable $exception): FlattenException
@@ -135,11 +149,15 @@ class HtmlErrorRenderer implements ErrorRendererInterface
         $debug = \is_bool($this->debug) ? $this->debug : ($this->debug)($exception);
         $statusText = $this->escape($exception->getStatusText());
         $statusCode = $this->escape($exception->getStatusCode());
+        $scriptNonce = $this->scriptNonce instanceof \Closure ? ($this->scriptNonce)() : $this->scriptNonce;
+        $styleNonce = $this->styleNonce === $this->scriptNonce ? $scriptNonce : ($this->styleNonce instanceof \Closure ? ($this->styleNonce)() : $this->styleNonce);
+        $this->nonces = [$scriptNonce, $styleNonce];
 
         if (!$debug) {
             return $this->include(self::$template, [
                 'statusText' => $statusText,
                 'statusCode' => $statusCode,
+                'styleNonce' => $styleNonce,
             ]);
         }
 
@@ -147,6 +165,8 @@ class HtmlErrorRenderer implements ErrorRendererInterface
 
         return $this->include($debugTemplate, [
             'exception' => $exception,
+            'scriptNonce' => $scriptNonce,
+            'styleNonce' => $styleNonce,
             'exceptionMessage' => $exceptionMessage,
             'statusText' => $statusText,
             'statusCode' => $statusCode,
@@ -206,6 +226,7 @@ class HtmlErrorRenderer implements ErrorRendererInterface
     private function createHtmlDumper(): HtmlDumper
     {
         $dumper = new HtmlDumper();
+        $dumper->setNonce(...$this->nonces);
         $dumper->setTheme('light');
         $dumper->setStyles([
             'default' => 'background:none; color:var(--code-foreground); font:13px/1.6 var(--font-mono); word-wrap:break-word; white-space:pre-wrap; position:relative; z-index:99999; word-break:break-all',
