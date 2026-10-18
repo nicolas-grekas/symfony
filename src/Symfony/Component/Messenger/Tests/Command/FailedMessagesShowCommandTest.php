@@ -246,6 +246,29 @@ class FailedMessagesShowCommandTest extends TestCase
         $this->assertStringContainsString('Displaying only \'namespace\otherClass\' messages', $tester->getDisplay(true));
     }
 
+    public function testListMessagesAppliesMaxAfterClassFilter()
+    {
+        $envelopes = [
+            new Envelope(new \stdClass(), [new TransportMessageIdStamp(1), ErrorDetailsStamp::create(new \RuntimeException('Error 1'))]),
+            new Envelope(new \ArrayObject(), [new TransportMessageIdStamp(2), ErrorDetailsStamp::create(new \RuntimeException('Error 2'))]),
+            new Envelope(new \stdClass(), [new TransportMessageIdStamp(3), ErrorDetailsStamp::create(new \RuntimeException('Error 3'))]),
+            new Envelope(new \stdClass(), [new TransportMessageIdStamp(4), ErrorDetailsStamp::create(new \RuntimeException('Error 4'))]),
+        ];
+        $receiver = $this->createStub(ListableReceiverInterface::class);
+        $receiver->method('all')->willReturnCallback(static fn (?int $limit = null) => \array_slice($envelopes, 0, $limit));
+
+        $command = new FailedMessagesShowCommand('failure_receiver', new ServiceLocator(['failure_receiver' => static fn () => $receiver]));
+
+        $tester = new CommandTester($command);
+        $tester->execute(['--class-filter' => 'stdClass', '--max' => 2]);
+
+        $display = $tester->getDisplay(true);
+        $this->assertStringContainsString('Error 1', $display);
+        $this->assertStringContainsString('Error 3', $display);
+        $this->assertStringNotContainsString('Error 4', $display);
+        $this->assertStringContainsString('Showing first 2 messages.', $display);
+    }
+
     public function testListMessagesReturnsCountByClassName()
     {
         $sentToFailureStamp = new SentToFailureTransportStamp('async');
