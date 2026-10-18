@@ -107,7 +107,10 @@ class HandleMessageMiddleware implements MiddlewareInterface
                     $handler = $stamp->getHandlerDescriptor()->getBatchHandler();
                     $handler->flush($flushStamp->force());
                 } catch (\Throwable $e) {
-                    $exceptions[$stamp->getHandlerDescriptor()->getName()] = $e;
+                    $handlerName = $stamp->getHandlerDescriptor()->getName();
+                    $exceptions[$handlerName] = $e;
+                    $handledStamps = array_filter($envelope->all(HandledStamp::class), static fn (HandledStamp $handledStamp) => $handledStamp->getHandlerName() !== $handlerName);
+                    $envelope = $envelope->withoutAll(HandledStamp::class)->with(...$handledStamps);
                 }
             }
         }

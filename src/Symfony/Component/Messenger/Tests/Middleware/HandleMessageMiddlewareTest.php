@@ -23,9 +23,11 @@ use Symfony\Component\Messenger\Handler\HandlersLocator;
 use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
 use Symfony\Component\Messenger\Middleware\StackMiddleware;
 use Symfony\Component\Messenger\Stamp\AckStamp;
+use Symfony\Component\Messenger\Stamp\FlushBatchHandlersStamp;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Messenger\Stamp\HandlerArgumentsStamp;
 use Symfony\Component\Messenger\Stamp\NoAutoAckStamp;
+use Symfony\Component\Messenger\Stamp\NonSendableStampInterface;
 use Symfony\Component\Messenger\Test\Middleware\MiddlewareTestCase;
 use Symfony\Component\Messenger\Tests\Fixtures\DummyMessage;
 
@@ -317,6 +319,60 @@ class HandleMessageMiddlewareTest extends MiddlewareTestCase
 
         $message = new DummyMessage('Hey');
         $middleware->handle(new Envelope($message), new StackMiddleware());
+
+        $this->assertSame([$message], $handler->processedMessages);
+    }
+
+    public function testBatchHandlerIsCalledAgainAfterFailedFlush()
+    {
+        $handler = new class implements BatchHandlerInterface {
+            public array $processedMessages = [];
+            private bool $failed = false;
+
+            use BatchHandlerTrait;
+
+            public function __invoke(DummyMessage $message, ?Acknowledger $ack = null)
+            {
+                return $this->handle($message, $ack);
+            }
+
+            private function shouldFlush(): bool
+            {
+                return false;
+            }
+
+            private function process(array $jobs): void
+            {
+                if (!$this->failed) {
+                    // the acknowledgers are not called, so flush() throws
+                    $this->failed = true;
+
+                    return;
+                }
+
+                foreach ($jobs as [$job, $ack]) {
+                    $this->processedMessages[] = $job;
+                    $ack->ack($job);
+                }
+            }
+        };
+
+        $middleware = new HandleMessageMiddleware(new HandlersLocator([
+            DummyMessage::class => [new HandlerDescriptor($handler)],
+        ]));
+
+        $message = new DummyMessage('Hey');
+        $envelope = $middleware->handle(new Envelope($message, [new AckStamp(static function () {})]), new StackMiddleware());
+
+        try {
+            $middleware->handle($envelope->withoutAll(AckStamp::class)->with(new FlushBatchHandlersStamp(true)), new StackMiddleware());
+            $this->fail('An exception should have been thrown.');
+        } catch (HandlerFailedException $e) {
+        }
+
+        $this->assertSame([], $e->getEnvelope()->all(HandledStamp::class));
+
+        $middleware->handle($e->getEnvelope()->withoutStampsOfType(NonSendableStampInterface::class), new StackMiddleware());
 
         $this->assertSame([$message], $handler->processedMessages);
     }
