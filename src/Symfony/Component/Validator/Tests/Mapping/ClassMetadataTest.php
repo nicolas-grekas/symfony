@@ -323,6 +323,41 @@ class ClassMetadataTest extends TestCase
         $this->assertTrue($metadata->isGroupSequenceProvider());
     }
 
+    public function testMergeConstraintsMergesGroupSequence()
+    {
+        $parent = new ClassMetadata(self::PARENTCLASS);
+        $parent->setGroupSequence(new GroupSequence(['Foo', 'EntityParent', 'Bar']));
+
+        $this->metadata->mergeConstraints($parent);
+
+        $this->assertSame(['Foo', 'Entity', 'Bar'], $this->metadata->getGroupSequence()->groups);
+        $this->assertSame(['Foo', 'EntityParent', 'Bar'], $parent->getGroupSequence()->groups);
+    }
+
+    public function testMergeConstraintsDoesNotOverrideGroupSequence()
+    {
+        $parent = new ClassMetadata(self::PARENTCLASS);
+        $parent->setGroupSequence(['EntityParent', 'Foo']);
+
+        $this->metadata->setGroupSequence(['Entity', 'Bar']);
+        $this->metadata->mergeConstraints($parent);
+
+        $this->assertSame(['Entity', 'Bar'], $this->metadata->getGroupSequence()->groups);
+    }
+
+    public function testMergeConstraintsDoesNotMergeGroupSequenceIntoGroupSequenceProvider()
+    {
+        $parent = new ClassMetadata(self::PROVIDERCLASS);
+        $parent->setGroupSequence(['GroupSequenceProviderEntity', 'Foo']);
+
+        $metadata = new ClassMetadata(self::PROVIDERCHILDCLASS);
+        $metadata->setGroupSequenceProvider(true);
+        $metadata->mergeConstraints($parent);
+
+        $this->assertTrue($metadata->isGroupSequenceProvider());
+        $this->assertFalse($metadata->hasGroupSequence());
+    }
+
     public function testMergeConstraintsMergesTraversalStrategy()
     {
         $traversable = new ClassMetadata(CustomArrayObject::class);

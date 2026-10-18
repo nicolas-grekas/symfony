@@ -331,6 +331,18 @@ class ClassMetadata extends GenericMetadata implements ClassMetadataInterface
             $this->setGroupSequenceProvider(true);
         }
 
+        if ($source->hasGroupSequence() && !$this->hasGroupSequence() && !$this->isGroupSequenceProvider()) {
+            $groupSequence = clone $source->getGroupSequence();
+
+            foreach ($groupSequence->groups as $i => $group) {
+                if ($source->getDefaultGroup() === $group) {
+                    $groupSequence->groups[$i] = $this->getDefaultGroup();
+                }
+            }
+
+            $this->setGroupSequence($groupSequence);
+        }
+
         if (TraversalStrategy::IMPLICIT === $this->traversalStrategy) {
             $this->traversalStrategy = $source->getTraversalStrategy();
         }
