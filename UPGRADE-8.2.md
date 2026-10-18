@@ -385,6 +385,9 @@ Messenger
  * `AsMessageHandler::$priority` is now `?int` and defaults to `null`, which means "no priority declared";
    the `messenger.message_handler` tags it produces carry `null` too. Code that read the property as an
    `int` should read `$attribute->priority ?? 0`
+ * `RejectRedeliveredMessageMiddleware` rejects the messages that the Doctrine transport fetches again after their `redeliver_timeout`, for example because a worker died while handling them.
+   These messages follow the retry strategy of the transport and go to the failure transport when no retry is left.
+   Set the `messenger.reject_redelivered_messages` option to `false` to handle them again directly, as before
 
 Mime
 ----

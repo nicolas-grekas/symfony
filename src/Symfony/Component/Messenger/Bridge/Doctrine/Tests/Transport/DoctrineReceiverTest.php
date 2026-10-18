@@ -130,6 +130,34 @@ class DoctrineReceiverTest extends TestCase
         $this->assertCount(1, $actualEnvelopes);
     }
 
+    public function testGetFlagsTheMessagesThatWereDeliveredBefore()
+    {
+        $connection = $this->createStub(Connection::class);
+        $connection->method('get')->willReturn([
+            ['delivered_at' => null] + $this->createDoctrineEnvelope(),
+            ['id' => 2, 'delivered_at' => '2000-01-01 00:00:00'] + $this->createDoctrineEnvelope(),
+        ]);
+
+        $receiver = new DoctrineReceiver($connection, $this->createSerializer());
+        $envelopes = $receiver->get(2);
+
+        $this->assertFalse($envelopes[0]->last(DoctrineReceivedStamp::class)->isRedelivery());
+        $this->assertTrue($envelopes[1]->last(DoctrineReceivedStamp::class)->isRedelivery());
+    }
+
+    public function testAllAndFindDoNotFlagRedeliveries()
+    {
+        $doctrineEnvelope = ['delivered_at' => '2000-01-01 00:00:00'] + $this->createDoctrineEnvelope();
+        $connection = $this->createStub(Connection::class);
+        $connection->method('findAll')->willReturn([$doctrineEnvelope]);
+        $connection->method('find')->willReturn($doctrineEnvelope);
+
+        $receiver = new DoctrineReceiver($connection, $this->createSerializer());
+
+        $this->assertFalse(iterator_to_array($receiver->all())[0]->last(DoctrineReceivedStamp::class)->isRedelivery());
+        $this->assertFalse($receiver->find(1)->last(DoctrineReceivedStamp::class)->isRedelivery());
+    }
+
     public function testAll()
     {
         $serializer = $this->createSerializer();

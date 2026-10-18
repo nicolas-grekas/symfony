@@ -46,6 +46,7 @@
     "conflict": {
         "symfony/console": "<7.4",
         "symfony/dependency-injection": "<8.2",
+        "symfony/doctrine-messenger": "<8.2",
         "symfony/event-dispatcher": "<8.2",
         "symfony/event-dispatcher-contracts": "<2.5",
         "symfony/lock": "<7.4",

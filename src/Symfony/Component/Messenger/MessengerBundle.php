@@ -265,7 +265,7 @@ class MessengerBundle extends AbstractBundle
                 ->end()
                 ->booleanNode('reject_redelivered_messages')
                     ->defaultTrue()
-                    ->info('Whether redeliveries should be rejected and retried through a new message instead of being handled directly. This mostly makes sense for AMQP, which redelivers messages that were neither acknowledged nor rejected. Disabling it avoids losing a message when the retry or the failure transport is unreachable, at the risk of a redelivery loop that blocks the queue.')
+                    ->info('Whether redeliveries should be rejected and retried through a new message instead of being handled directly. This mostly makes sense for AMQP and Doctrine, which redeliver messages that were neither acknowledged nor rejected. Disabling it avoids losing a message when the retry or the failure transport is unreachable, at the risk of a redelivery loop that blocks the queue.')
                 ->end()
                 ->arrayNode('deduplication')
                     ->addDefaultsIfNotSet()

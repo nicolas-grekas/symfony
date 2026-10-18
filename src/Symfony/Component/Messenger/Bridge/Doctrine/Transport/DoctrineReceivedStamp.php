@@ -20,11 +20,20 @@ class DoctrineReceivedStamp implements NonSendableStampInterface
 {
     public function __construct(
         private string $id,
+        private bool $redelivery = false,
     ) {
     }
 
     public function getId(): string
     {
         return $this->id;
+    }
+
+    /**
+     * Tells whether the message was fetched again because an earlier delivery was neither acknowledged nor rejected within the redeliver timeout.
+     */
+    public function isRedelivery(): bool
+    {
+        return $this->redelivery;
     }
 }

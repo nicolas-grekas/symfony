@@ -23,6 +23,10 @@ use Psr\Log\AbstractLogger;
 use Symfony\Bridge\PhpUnit\ClockMock;
 use Symfony\Component\Messenger\Bridge\Doctrine\Tests\Fixtures\DummyMessage;
 use Symfony\Component\Messenger\Bridge\Doctrine\Transport\Connection;
+use Symfony\Component\Messenger\Bridge\Doctrine\Transport\DoctrineReceivedStamp;
+use Symfony\Component\Messenger\Bridge\Doctrine\Transport\DoctrineTransport;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Transport\Serialization\PhpSerializer;
 
 #[RequiresPhpExtension('pdo_sqlite')]
 class DoctrineIntegrationTest extends TestCase
@@ -235,6 +239,19 @@ class DoctrineIntegrationTest extends TestCase
         $next = $this->connection->get();
         $this->assertEquals('{"message": "Hi requeued"}', $next[0]['body']);
         $this->connection->reject($next[0]['id']);
+    }
+
+    public function testTheMessagesFetchedAgainAfterTheRedeliverTimeoutAreRedeliveries()
+    {
+        $transport = new DoctrineTransport($this->connection, new PhpSerializer());
+        $transport->send(new Envelope(new DummyMessage('Hi')));
+
+        $stamp = $transport->get()[0]->last(DoctrineReceivedStamp::class);
+        $this->assertFalse($stamp->isRedelivery());
+
+        $this->driverConnection->executeStatement('UPDATE messenger_messages SET delivered_at = ? WHERE id = ?', ['2000-01-01 00:00:00', $stamp->getId()]);
+
+        $this->assertTrue($transport->get()[0]->last(DoctrineReceivedStamp::class)->isRedelivery());
     }
 
     public function testTheTransportIsSetupOnGet()
