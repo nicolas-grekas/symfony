@@ -12,11 +12,12 @@
 namespace Symfony\Component\Messenger\Middleware;
 
 use Symfony\Component\Messenger\Bridge\Amqp\Transport\AmqpReceivedStamp;
+use Symfony\Component\Messenger\Bridge\Doctrine\Transport\DoctrineReceivedStamp;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\RejectRedeliveredMessageException;
 
 /**
- * Middleware that throws a RejectRedeliveredMessageException when a message is detected that has been redelivered by AMQP.
+ * Middleware that throws a RejectRedeliveredMessageException when a message is detected that has been redelivered by AMQP or Doctrine.
  *
  * The middleware runs before the HandleMessageMiddleware and prevents redelivered messages from being handled directly.
  * The thrown exception is caught by the worker and will trigger the retry logic according to the retry strategy.
@@ -27,6 +28,8 @@ use Symfony\Component\Messenger\Exception\RejectRedeliveredMessageException;
  * infinite redelivery loops and to unblock the queue by republishing the redelivered messages as retries with a retry
  * limit and potential delay.
  *
+ * Doctrine redelivers the messages that were neither acknowledged nor rejected within the redeliver timeout, for example because the worker died while handling them.
+ *
  * @author Tobias Schultze <http://tobion.de>
  */
 class RejectRedeliveredMessageMiddleware implements MiddlewareInterface
@@ -35,6 +38,10 @@ class RejectRedeliveredMessageMiddleware implements MiddlewareInterface
     {
         if ($envelope->last(AmqpReceivedStamp::class)?->getAmqpEnvelope()->isRedelivery()) {
             throw new RejectRedeliveredMessageException('Redelivered message from AMQP detected that will be rejected and trigger the retry logic.');
+        }
+
+        if ($envelope->last(DoctrineReceivedStamp::class)?->isRedelivery()) {
+            throw new RejectRedeliveredMessageException('Redelivered message from Doctrine detected that will be rejected and trigger the retry logic.');
         }
 
         return $stack->next()->handle($envelope, $stack);

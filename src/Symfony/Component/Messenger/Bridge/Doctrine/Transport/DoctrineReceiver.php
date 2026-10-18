@@ -85,7 +85,7 @@ class DoctrineReceiver implements ListableReceiverInterface, MessageCountAwareIn
             return [];
         }
 
-        return array_map($this->createEnvelopeFromData(...), $doctrineEnvelopes);
+        return array_map(fn (array $data) => $this->createEnvelopeFromData($data, isset($data['delivered_at'])), $doctrineEnvelopes);
     }
 
     public function ack(Envelope $envelope): void
@@ -149,10 +149,10 @@ class DoctrineReceiver implements ListableReceiverInterface, MessageCountAwareIn
         return $envelope->last(DoctrineReceivedStamp::class)?->getId() ?? throw new LogicException('No DoctrineReceivedStamp found on the Envelope.');
     }
 
-    private function createEnvelopeFromData(array $data): Envelope
+    private function createEnvelopeFromData(array $data, bool $redelivery = false): Envelope
     {
         $stamps = [
-            new DoctrineReceivedStamp($data['id']),
+            new DoctrineReceivedStamp($data['id'], $redelivery),
             new TransportMessageIdStamp($data['id']),
         ];
 
