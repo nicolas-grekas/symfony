@@ -450,6 +450,37 @@ class PhpDocExtractorTest extends TestCase
         yield 'promoted property from child' => [ChildOfParentWithPromotedSelfDocBlock::class, 'promotedSelfProp', ParentWithPromotedSelfDocBlock::class];
     }
 
+    /**
+     * @param class-string $class
+     */
+    #[DataProvider('selfDocBlockInCollectionOrNullableTypeProvider')]
+    public function testSelfDocBlockInCollectionOrNullableTypeResolvesClass(string $class, string $property, Type $expectedType)
+    {
+        $this->assertEquals($expectedType, $this->extractor->getType($class, $property));
+    }
+
+    /**
+     * @return iterable<string, array{0: class-string, 1: string, 2: Type}>
+     */
+    public static function selfDocBlockInCollectionOrNullableTypeProvider(): iterable
+    {
+        $parent = Type::object(ParentWithSelfDocBlock::class);
+        $child = Type::object(ChildWithSelfDocBlock::class);
+
+        yield 'self collection' => [ParentWithSelfDocBlock::class, 'selfCollectionProp', Type::array($parent)];
+        yield 'self collection from child' => [ChildWithSelfDocBlock::class, 'selfCollectionProp', Type::array($parent)];
+        yield 'static collection' => [ParentWithSelfDocBlock::class, 'staticCollectionProp', Type::dict($parent)];
+        yield 'static collection from child' => [ChildWithSelfDocBlock::class, 'staticCollectionProp', Type::dict($child)];
+        yield 'parent collection' => [ChildWithSelfDocBlock::class, 'parentCollectionProp', Type::list($parent)];
+        yield 'nullable self' => [ChildWithSelfDocBlock::class, 'nullableSelfProp', Type::nullable($parent)];
+    }
+
+    public function testSelfDocBlockInUnionTypeIsNotResolved()
+    {
+        $this->assertEquals(Type::union(Type::object('self'), Type::int()), $this->extractor->getType(ParentWithSelfDocBlock::class, 'selfOrIntProp'));
+        $this->assertEquals(Type::union(Type::object('self'), Type::int(), Type::null()), $this->extractor->getType(ParentWithSelfDocBlock::class, 'nullableSelfOrIntProp'));
+    }
+
     #[DataProvider('inheritedPromotedPropertyWithConstructorOverrideProvider')]
     public function testInheritedPromotedPropertyWithConstructorOverride(string $class, string $property, ?Type $expectedType)
     {

@@ -19,6 +19,31 @@ class ParentWithSelfDocBlock
     public $selfProp;
 
     /**
+     * @var self[]
+     */
+    public $selfCollectionProp;
+
+    /**
+     * @var array<string, static>
+     */
+    public $staticCollectionProp;
+
+    /**
+     * @var ?self
+     */
+    public $nullableSelfProp;
+
+    /**
+     * @var self|int
+     */
+    public $selfOrIntProp;
+
+    /**
+     * @var self|int|null
+     */
+    public $nullableSelfOrIntProp;
+
+    /**
      * @return self
      */
     public function getSelfAccessor()
@@ -36,6 +61,10 @@ class ParentWithSelfDocBlock
 
 class ChildWithSelfDocBlock extends ParentWithSelfDocBlock
 {
+    /**
+     * @var list<parent>
+     */
+    public $parentCollectionProp;
 }
 
 trait TraitWithSelfDocBlock

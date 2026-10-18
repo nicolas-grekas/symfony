@@ -23,7 +23,11 @@ use Symfony\Component\PropertyInfo\PropertyTypeExtractorInterface;
 use Symfony\Component\PropertyInfo\Util\PhpDocTypeHelper;
 use Symfony\Component\TypeInfo\Exception\LogicException;
 use Symfony\Component\TypeInfo\Type;
+use Symfony\Component\TypeInfo\Type\CollectionType;
+use Symfony\Component\TypeInfo\Type\GenericType;
+use Symfony\Component\TypeInfo\Type\NullableType;
 use Symfony\Component\TypeInfo\Type\ObjectType;
+use Symfony\Component\TypeInfo\TypeContext\TypeContext;
 use Symfony\Component\TypeInfo\TypeContext\TypeContextFactory;
 
 /**
@@ -403,28 +407,7 @@ class PhpDocExtractor implements PropertyDescriptionExtractorInterface, Property
             }
 
             $type = $this->phpDocTypeHelper->getType($tagType);
-
-            if (!$type instanceof ObjectType) {
-                $types[] = $type;
-
-                continue;
-            }
-
-            $normalizedClassName = match ($type->getClassName()) {
-                'self' => $typeContext->getDeclaringClass(),
-                'static' => $typeContext->getCalledClass(),
-                default => $type->getClassName(),
-            };
-
-            if ('parent' === $normalizedClassName) {
-                try {
-                    $normalizedClassName = $typeContext->getParentClass();
-                } catch (LogicException) {
-                    // if there is no parent for the current class, we keep the "parent" raw string
-                }
-            }
-
-            $types[] = $type->isNullable() ? Type::nullable(Type::object($normalizedClassName)) : Type::object($normalizedClassName);
+            $types[] = $type ? $this->resolveClassKeywords($type, $typeContext) : null;
         }
 
         if (!$type = $types[0] ?? null) {
@@ -469,6 +452,47 @@ class PhpDocExtractor implements PropertyDescriptionExtractorInterface, Property
             return (new \ReflectionProperty($class, $property))->isPromoted();
         } catch (\ReflectionException) {
             return false;
+        }
+    }
+
+    private function resolveClassKeywords(Type $type, TypeContext $typeContext): Type
+    {
+        if ($type instanceof NullableType || $type instanceof CollectionType) {
+            $wrappedType = $this->resolveClassKeywords($type->getWrappedType(), $typeContext);
+
+            if ($wrappedType === $type->getWrappedType()) {
+                return $type;
+            }
+
+            return $type instanceof NullableType ? Type::nullable($wrappedType) : new CollectionType($wrappedType, $type->isList());
+        }
+
+        if ($type instanceof GenericType) {
+            $wrappedType = $this->resolveClassKeywords($type->getWrappedType(), $typeContext);
+            $variableTypes = array_map(fn (Type $variableType): Type => $this->resolveClassKeywords($variableType, $typeContext), $type->getVariableTypes());
+
+            if ($wrappedType === $type->getWrappedType() && $variableTypes === $type->getVariableTypes()) {
+                return $type;
+            }
+
+            return new GenericType($wrappedType, ...$variableTypes);
+        }
+
+        // other unions are kept as is, otherwise the Serializer would turn an int given to "self|int" into an object
+        if (!$type instanceof ObjectType) {
+            return $type;
+        }
+
+        try {
+            return match ($type->getClassName()) {
+                'self' => Type::object($typeContext->getDeclaringClass()),
+                'static' => Type::object($typeContext->getCalledClass()),
+                'parent' => Type::object($typeContext->getParentClass()),
+                default => $type,
+            };
+        } catch (LogicException) {
+            // if there is no parent for the current class, we keep the "parent" raw string
+            return $type;
         }
     }
 }
