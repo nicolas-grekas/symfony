@@ -283,4 +283,36 @@ class SymfonyStyleTest extends TestCase
         $this->assertSame($streamOutput, $sectionOutput);
         $this->assertStringNotContainsString(' > '.\PHP_EOL.\PHP_EOL, $sectionOutput);
     }
+
+    public function testAskQuestionInSectionWithSectionsBelow()
+    {
+        $inputStream = fopen('php://memory', 'r+');
+        fwrite($inputStream, 'Answer'.\PHP_EOL);
+        rewind($inputStream);
+        $input = $this->createStub(Input::class);
+        $input->method('isInteractive')->willReturn(true);
+        $input->method('getStream')->willReturn($inputStream);
+
+        $stream = fopen('php://memory', 'r+', false);
+        $sections = [];
+        $output1 = new ConsoleSectionOutput($stream, $sections, StreamOutput::VERBOSITY_NORMAL, true, new OutputFormatter());
+        $output2 = new ConsoleSectionOutput($stream, $sections, StreamOutput::VERBOSITY_NORMAL, true, new OutputFormatter());
+
+        $output2->writeln('Progress');
+
+        $style = new SymfonyStyle($input, $output1);
+        $answer = $style->ask('Dummy question?', null, static function (string $answer) use ($stream, &$displayWhileAnswering): string {
+            rewind($stream);
+            $displayWhileAnswering = stream_get_contents($stream);
+
+            return $answer;
+        });
+        $output2->overwrite('Done');
+
+        $this->assertSame('Answer', $answer);
+        $this->assertSame('Progress'.\PHP_EOL."\x1b[1A\x1b[0J".\PHP_EOL." \033[32mDummy question?\033[39m:".\PHP_EOL.' > '.\PHP_EOL, $displayWhileAnswering);
+
+        rewind($stream);
+        $this->assertSame($displayWhileAnswering.'Progress'.\PHP_EOL."\x1b[1A\x1b[0J".'Done'.\PHP_EOL, stream_get_contents($stream));
+    }
 }

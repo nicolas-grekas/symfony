@@ -26,6 +26,7 @@ class ConsoleSectionOutput extends StreamOutput
     private array $sections;
     private Terminal $terminal;
     private int $maxHeight = 0;
+    private ?string $hiddenSectionsContent = null;
 
     /**
      * @param resource               $stream
@@ -202,6 +203,31 @@ class ConsoleSectionOutput extends StreamOutput
     }
 
     /**
+     * Removes the sections below this one from the screen until showSectionsBelow() is called.
+     *
+     * This keeps the cursor right after this section, where the user types the answer to a question.
+     *
+     * @internal
+     */
+    public function hideSectionsBelow(): void
+    {
+        if (null === $this->hiddenSectionsContent && $this->isDecorated()) {
+            $this->hiddenSectionsContent = $this->popStreamContentUntilCurrentSection();
+        }
+    }
+
+    /**
+     * @internal
+     */
+    public function showSectionsBelow(): void
+    {
+        if (null !== $content = $this->hiddenSectionsContent) {
+            $this->hiddenSectionsContent = null;
+            parent::doWrite($content, false);
+        }
+    }
+
+    /**
      * @return void
      */
     protected function doWrite(string $message, bool $newline)
@@ -258,7 +284,7 @@ class ConsoleSectionOutput extends StreamOutput
         $erasedContent = [];
 
         foreach ($this->sections as $section) {
-            if ($section === $this) {
+            if ($section === $this || null !== $this->hiddenSectionsContent) {
                 break;
             }
 
