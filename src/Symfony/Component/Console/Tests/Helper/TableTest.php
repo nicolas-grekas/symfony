@@ -1881,6 +1881,7 @@ class TableTest extends TestCase
                 ["Lorem ipsum\r\ndolor sit amet", 'x'],
                 ["foo\r\nbar\nbaz", 'y'],
                 ["<info>ab</info>cde\r\nfgh", 'z'],
+                ["abcde \r\n", 'w'],
             ])
             ->render()
         ;
@@ -1898,6 +1899,8 @@ class TableTest extends TestCase
                 | baz   |   |
                 | abcde | z |
                 | fgh   |   |
+                | abcde | w |
+                |       |   |
                 +-------+---+
 
                 TABLE;
@@ -1974,6 +1977,26 @@ class TableTest extends TestCase
             <<<'TABLE'
                 +--------+---+
                 | abcdef | x |
+                +--------+---+
+
+                TABLE;
+
+        $this->assertSame($expected, $this->getOutputContent($output));
+    }
+
+    public function testColumnMaxWidthsWithStyledLineFollowedByWhitespace()
+    {
+        (new Table($output = $this->getOutputStream()))
+            ->setColumnMaxWidth(0, 6)
+            ->setRows([['<info>abcdef</info> ', 'x']])
+            ->render()
+        ;
+
+        $expected =
+            <<<'TABLE'
+                +--------+---+
+                | abcdef | x |
+                |        |   |
                 +--------+---+
 
                 TABLE;

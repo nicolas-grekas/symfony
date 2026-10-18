@@ -388,8 +388,10 @@ class OutputFormatterTest extends TestCase
         $this->assertSame("\e[32mabc\e[39m\e[0m", $formatter->formatAndWrap("<info>abc</info>\e[0m", 3));
         $this->assertSame("\e[32mab\e[39m\e[31mcd\e[0m", $formatter->formatAndWrap("<info>ab</info>\e[31mcd\e[0m", 4));
         $this->assertSame("\e[32mab\e[39m\e[31mcd\nef\e[0m", $formatter->formatAndWrap("<info>ab</info>\e[31mcdef\e[0m", 4));
-        $this->assertSame("\e[32mab\e[39m\e[31m\e[0m", $formatter->formatAndWrap("<info>ab</info>\e[31m\n\e[0m", 5));
+        $this->assertSame("\e[32mab\e[39m\e[31m\e[0m\n", $formatter->formatAndWrap("<info>ab</info>\e[31m\n\e[0m", 5));
         $this->assertSame("a\n\nb", preg_replace('/\e\[[0-9;]*m/', '', $formatter->formatAndWrap("a\n<info>\e[31m\n\e[0m</info>b", 5)));
+        $this->assertSame("foo\e[0m\n\n\e[37;41mbar\e[39;49m", $formatter->formatAndWrap("foo\n\n\e[0m<error>bar</error>", 11));
+        $this->assertSame("abcdef\nfoo", preg_replace('/\e\[[0-9;]*m/', '', $formatter->formatAndWrap("<info>abcdef</info>\e[31m\nfoo", 6)));
     }
 
     public function testFormatAndWrapLongRunsOfAnsiSequencesAndWhitespace()
@@ -428,6 +430,7 @@ class OutputFormatterTest extends TestCase
         $this->assertSame("\e[32mLorem\e[39m\n\e[32mipsum\e[39m\r\n\e[32mdolor\e[39m", $formatter->formatAndWrap("<info>Lorem ipsum\r\ndolor</info>", 5));
         $this->assertSame("\e[32mabc\e[39mdef\r\nghi", $formatter->formatAndWrap("<info>abc</info>def\r\nghi", 6));
         $this->assertSame("\e[32mabc\e[39mdef\ngh\r\nij", $formatter->formatAndWrap("<info>abc</info>defgh\r\nij", 6));
+        $this->assertSame("foo\r\n", $formatter->formatAndWrap("foo \r\n", 3));
     }
 
     public function testFormatAndWrapWithEscapedCharacters()
@@ -460,6 +463,9 @@ class OutputFormatterTest extends TestCase
         $this->assertSame("foobar\e[37;41mbazne\e[39;49m\n\e[37;41mwline\e[39;49m", $formatter->formatAndWrap("foobar<error>bazne\nwline</error>", 11));
         $this->assertSame("foobar\e[37;41mbazne\e[39;49m\n\e[37;41mw\e[39;49m\n\e[37;41mline\e[39;49m", $formatter->formatAndWrap("foobar<error>baznew\nline</error>", 11));
         $this->assertSame("\e[37;41m👩‍🌾\e[39;49m", $formatter->formatAndWrap('<error>👩‍🌾</error>', 1));
+        $this->assertSame("foo\n\n\e[37;41mbar\e[39;49m", $formatter->formatAndWrap("foo\n\n<error>bar</error>", 11));
+        $this->assertSame("\e[37;41mfoo\e[39;49m\n\e[37;41mbar\e[39;49m", $formatter->formatAndWrap("<error>foo</error>\n<error>bar</error>", 11));
+        $this->assertSame("\e[37;41mfoo\e[39;49m\n\e[37;41m\e[39;49mbar", $formatter->formatAndWrap("<error>foo\n</error>bar", 11));
 
         $formatter = new OutputFormatter();
 
@@ -480,6 +486,13 @@ class OutputFormatterTest extends TestCase
         $this->assertSame("foobarbazne\nwline", $formatter->formatAndWrap("foobar<error>bazne\nwline</error>", 11));
         $this->assertSame("foobarbazne\nw\nline", $formatter->formatAndWrap("foobar<error>baznew\nline</error>", 11));
         $this->assertSame('👩‍🌾', $formatter->formatAndWrap('👩‍🌾', 1));
+        $this->assertSame("foo\n\nbar", $formatter->formatAndWrap("foo\n\n<error>bar</error>", 11));
+        $this->assertSame("foo\nbar", $formatter->formatAndWrap("<error>foo</error>\n<error>bar</error>", 11));
+        $this->assertSame("foo\n\nbar", $formatter->formatAndWrap("<error>foo\n</error>\nbar", 11));
+        $this->assertSame("foo\n  bar", $formatter->formatAndWrap("foo\n<error>  bar</error>", 11));
+        $this->assertSame("foobarbazne\n\nwline", $formatter->formatAndWrap("foobar<error>bazne</error>\n\nwline", 11));
+        $this->assertSame("abcdef\n", $formatter->formatAndWrap('<info>abcdef</info> ', 6));
+        $this->assertSame("abcdef\nx", $formatter->formatAndWrap('<info>abcdef</info> <comment> x</comment>', 6));
     }
 
     public function testFormatKeepsMultiByteContentUnchanged()
