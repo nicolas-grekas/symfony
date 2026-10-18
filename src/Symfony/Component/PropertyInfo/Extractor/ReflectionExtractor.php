@@ -212,13 +212,6 @@ class ReflectionExtractor implements PropertyListExtractorInterface, PropertyTyp
             return true;
         }
 
-        // First test with the camelized property name
-        [$reflectionMethod] = $this->getMutatorMethod($class, $this->camelize($property));
-        if (null !== $reflectionMethod) {
-            return true;
-        }
-
-        // Otherwise check for the old way
         [$reflectionMethod] = $this->getMutatorMethod($class, $property);
 
         return null !== $reflectionMethod;
@@ -702,6 +695,10 @@ class ReflectionExtractor implements PropertyListExtractorInterface, PropertyTyp
     {
         $ucProperty = ucfirst($property);
 
+        if (($camelProp = $this->camelize($property)) !== $ucProperty && $accessor = $this->getAccessorMethod($class, $camelProp)) {
+            return $accessor;
+        }
+
         foreach ($this->accessorPrefixes as $prefix) {
             try {
                 $reflectionMethod = new \ReflectionMethod($class, $prefix.$ucProperty);
@@ -727,6 +724,11 @@ class ReflectionExtractor implements PropertyListExtractorInterface, PropertyTyp
     private function getMutatorMethod(string $class, string $property): ?array
     {
         $ucProperty = ucfirst($property);
+
+        if (($camelProp = $this->camelize($property)) !== $ucProperty && $mutator = $this->getMutatorMethod($class, $camelProp)) {
+            return $mutator;
+        }
+
         $ucSingulars = $this->inflector->singularize($ucProperty);
 
         $mutatorPrefixes = \in_array($ucProperty, $ucSingulars, true) ? $this->arrayMutatorPrefixesLast : $this->arrayMutatorPrefixesFirst;

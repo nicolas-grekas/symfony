@@ -16,6 +16,10 @@ class SnakeCaseDummy
     private string $snake_property;
     private string $snake_readOnly;
     private string $snake_method;
+    private $snake_date;
+    private $snake_count;
+    private $snake_items = [];
+    private $snake_flag;
 
     public function getSnakeProperty()
     {
@@ -35,5 +39,29 @@ class SnakeCaseDummy
     public function setSnake_method($snake_method)
     {
         $this->snake_method = $snake_method;
+    }
+
+    public function setSnakeDate(\DateTimeInterface $snake_date)
+    {
+        $this->snake_date = $snake_date;
+    }
+
+    public function getSnakeCount(): int
+    {
+        return $this->snake_count;
+    }
+
+    public function addSnakeItem(\DateTime $snake_item)
+    {
+        $this->snake_items[] = $snake_item;
+    }
+
+    public function removeSnakeItem(\DateTime $snake_item)
+    {
+    }
+
+    public function setSnake_flag(bool $snake_flag)
+    {
+        $this->snake_flag = $snake_flag;
     }
 }

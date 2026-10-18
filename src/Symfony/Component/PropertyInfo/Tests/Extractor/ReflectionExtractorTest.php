@@ -466,6 +466,22 @@ class ReflectionExtractorTest extends TestCase
         $this->assertTrue($this->extractor->isWritable(SnakeCaseDummy::class, 'snake_method'));
     }
 
+    /**
+     * @dataProvider snakeCaseTypesProvider
+     */
+    public function testGetTypesSnakeCase(string $property, array $type)
+    {
+        $this->assertEquals($type, $this->extractor->getTypes(SnakeCaseDummy::class, $property));
+    }
+
+    public static function snakeCaseTypesProvider(): iterable
+    {
+        yield 'camelCase mutator' => ['snake_date', [new Type(Type::BUILTIN_TYPE_OBJECT, false, \DateTimeInterface::class)]];
+        yield 'camelCase accessor' => ['snake_count', [new Type(Type::BUILTIN_TYPE_INT)]];
+        yield 'camelCase adder' => ['snake_items', [new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true, new Type(Type::BUILTIN_TYPE_INT), new Type(Type::BUILTIN_TYPE_OBJECT, false, \DateTime::class))]];
+        yield 'snake_case mutator' => ['snake_flag', [new Type(Type::BUILTIN_TYPE_BOOL)]];
+    }
+
     public function testSingularize()
     {
         $this->assertTrue($this->extractor->isWritable(AdderRemoverDummy::class, 'analyses'));
