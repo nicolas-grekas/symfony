@@ -38,6 +38,11 @@
 
                 var noop = function() {};
 
+                var cspNonces = {
+                    script: '{{ csp_script_nonce|default('')|e('js') }}',
+                    style: '{{ csp_style_nonce|default('')|e('js') }}',
+                };
+
                 var profilerStorageKey = 'symfony/profiler/';
 
                 var addEventListener;
@@ -615,12 +620,13 @@
                                 /* Replace the ID, it has to match the new token */
                                 toolbarContent.parentElement.id = 'sfwdt' + newToken;
 
-                                /* Evaluate in global scope scripts embedded inside the toolbar */
-                                var i, scripts = [].slice.call(el.querySelectorAll('script'));
-                                for (i = 0; i < scripts.length; ++i) {
-                                    if (scripts[i].firstChild) {
-                                        eval.call({}, scripts[i].firstChild.nodeValue);
-                                    }
+                                /* Re-create the scripts and styles of the toolbar with the CSP nonces of the page, as scripts inserted with innerHTML never run */
+                                var i, elements = [].slice.call(el.querySelectorAll('script, style'));
+                                for (i = 0; i < elements.length; ++i) {
+                                    var element = document.createElement(elements[i].localName);
+                                    element.nonce = cspNonces[elements[i].localName];
+                                    element.textContent = elements[i].textContent;
+                                    elements[i].parentNode.replaceChild(element, elements[i]);
                                 }
 
                                 el.style.display = -1 !== xhr.responseText.indexOf('sf-toolbarreset') ? 'block' : 'none';
