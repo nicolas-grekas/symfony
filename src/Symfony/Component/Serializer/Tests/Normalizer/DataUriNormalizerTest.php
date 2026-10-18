@@ -111,6 +111,23 @@ class DataUriNormalizerTest extends TestCase
         $this->assertSame(file_get_contents(self::TEST_GIF_DATA), $this->getContent($file->openFile()));
     }
 
+    /**
+     * @dataProvider denormalizedDataProvider
+     */
+    public function testNormalizeDenormalizedData(string $type, string $uri, string $expected)
+    {
+        $this->assertSame($expected, $this->normalizer->normalize($this->normalizer->denormalize($uri, $type)));
+    }
+
+    public static function denormalizedDataProvider(): iterable
+    {
+        foreach ([\SplFileInfo::class, \SplFileObject::class, File::class] as $type) {
+            yield [$type, self::TEST_GIF_DATA, self::TEST_GIF_DATA];
+            yield [$type, self::TEST_TXT_DATA, self::TEST_TXT_DATA];
+            yield [$type, 'data:,Hello%2C%20World!', 'data:text/plain,Hello%2C%20World%21'];
+        }
+    }
+
     public function testGiveNotAccessToLocalFiles()
     {
         $this->expectException(UnexpectedValueException::class);
