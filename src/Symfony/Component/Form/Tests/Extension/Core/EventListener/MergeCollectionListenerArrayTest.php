@@ -12,8 +12,10 @@
 namespace Symfony\Component\Form\Tests\Extension\Core\EventListener;
 
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Form\Extension\Core\EventListener\MergeCollectionListener;
 use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormFactoryBuilder;
 
 class MergeCollectionListenerArrayTest extends MergeCollectionListenerTestCase
@@ -26,5 +28,25 @@ class MergeCollectionListenerArrayTest extends MergeCollectionListenerTestCase
     protected function getBuilder($name = 'name'): FormBuilderInterface
     {
         return new FormBuilder($name, null, new EventDispatcher(), (new FormFactoryBuilder())->getFormFactory());
+    }
+
+    public function testMergeListIntoList()
+    {
+        $this->form->setData(['first', 'second', 'third']);
+
+        $event = new FormEvent($this->form, ['second', 'fourth', 'fifth']);
+        (new MergeCollectionListener(true, true))->onSubmit($event);
+
+        $this->assertSame(['second', 'fourth', 'fifth'], $event->getData());
+    }
+
+    public function testRemoveMissingEntriesFromList()
+    {
+        $this->form->setData(['first', 'second', 'third']);
+
+        $event = new FormEvent($this->form, ['third']);
+        (new MergeCollectionListener(false, true))->onSubmit($event);
+
+        $this->assertSame(['third'], $event->getData());
     }
 }
