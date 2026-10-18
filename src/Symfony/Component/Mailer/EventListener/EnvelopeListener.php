@@ -14,6 +14,7 @@ namespace Symfony\Component\Mailer\EventListener;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Header\Headers;
 use Symfony\Component\Mime\Message;
 
 /**
@@ -52,6 +53,8 @@ class EnvelopeListener implements EventSubscriberInterface
             if ($message instanceof Message) {
                 if (!$message->getHeaders()->has('Sender') && !$message->getHeaders()->has('From')) {
                     $message->getHeaders()->addMailboxHeader('Sender', $this->sender);
+                } elseif ('' === $this->sender->getName() && $sender = $this->findNamedSender($message->getHeaders())) {
+                    $event->getEnvelope()->setSender($sender);
                 }
             }
         }
@@ -67,5 +70,21 @@ class EnvelopeListener implements EventSubscriberInterface
             // should be the last one to allow header changes by other listeners first
             MessageEvent::class => ['onMessage', -255],
         ];
+    }
+
+    private function findNamedSender(Headers $headers): ?Address
+    {
+        $addresses = $headers->get('From')?->getAddresses() ?? [];
+        if ($sender = $headers->get('Sender')) {
+            array_unshift($addresses, $sender->getAddress());
+        }
+
+        foreach ($addresses as $address) {
+            if ('' !== $address->getName() && $address->getAddress() === $this->sender->getAddress()) {
+                return $address;
+            }
+        }
+
+        return null;
     }
 }
