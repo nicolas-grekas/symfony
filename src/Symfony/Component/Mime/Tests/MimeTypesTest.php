@@ -82,4 +82,22 @@ class MimeTypesTest extends AbstractMimeTypeGuesserTestCase
         $this->assertContains($mime, ['application/csv', 'text/csv']);
         $this->assertSame(['csv'], $mt->getExtensions($mime));
     }
+
+    public function testOtfExtension()
+    {
+        $mt = new MimeTypes();
+
+        $mime = $mt->guessMimeType(__DIR__.'/Fixtures/mimetypes/test.otf');
+        $this->assertContains($mime, $mt->getMimeTypes('otf'));
+        $this->assertSame(['otf'], $mt->getExtensions($mime));
+    }
+
+    public function testTtfExtension()
+    {
+        $mt = new MimeTypes();
+
+        $mime = $mt->guessMimeType(__DIR__.'/Fixtures/mimetypes/test.ttf');
+        $this->assertContains($mime, $mt->getMimeTypes('ttf'));
+        $this->assertSame(['ttf'], $mt->getExtensions($mime));
+    }
 }
