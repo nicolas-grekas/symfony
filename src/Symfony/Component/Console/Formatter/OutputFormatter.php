@@ -137,10 +137,11 @@ class OutputFormatter implements WrappableOutputFormatterInterface
         }
 
         $offset = 0;
-        $output = $current = '';
+        $output = '';
         $openTagRegex = '[a-z](?:[^\\\\<>]*+ | \\\\.)*';
         $closeTagRegex = '[a-z][^<>]*+';
         $currentLineLength = 0;
+        $lineBreak = false;
         preg_match_all("#<(($openTagRegex) | /($closeTagRegex)?)>#ix", $message, $matches, \PREG_OFFSET_CAPTURE);
         foreach ($matches[0] as $i => $match) {
             $pos = $match[1];
@@ -152,7 +153,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
 
             // tags are delimited by "<" and ">", which are ASCII, so a tag offset can never
             // fall inside a multibyte sequence: slicing by bytes is safe here
-            $output .= $this->applyCurrentStyle(substr($message, $offset, $pos - $offset), $current, $width, $currentLineLength);
+            $output .= $this->applyCurrentStyle(substr($message, $offset, $pos - $offset), $width, $currentLineLength, $lineBreak);
             $offset = $pos + \strlen($text);
 
             // opening tag?
@@ -166,7 +167,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
                 // </>
                 $this->styleStack->pop();
             } elseif (null === $style = $this->createStyleFromString($tag)) {
-                $output .= $this->applyCurrentStyle($text, $current, $width, $currentLineLength);
+                $output .= $this->applyCurrentStyle($text, $width, $currentLineLength, $lineBreak);
             } elseif ($open) {
                 $this->styleStack->push($style);
             } else {
@@ -174,7 +175,11 @@ class OutputFormatter implements WrappableOutputFormatterInterface
             }
         }
 
-        $output .= $this->applyCurrentStyle(substr($message, $offset), $current, $width, $currentLineLength);
+        $output .= $this->applyCurrentStyle(substr($message, $offset), $width, $currentLineLength, $lineBreak);
+
+        if ($lineBreak) {
+            $output .= "\n";
+        }
 
         return str_replace("\0", '\\', $output);
     }
@@ -226,7 +231,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
     /**
      * Applies current style from stack to text, if must be applied.
      */
-    private function applyCurrentStyle(string $text, string &$current, int $width, int &$currentLineLength): string
+    private function applyCurrentStyle(string $text, int $width, int &$currentLineLength, bool &$lineBreak): string
     {
         if ('' === $text) {
             return '';
@@ -238,17 +243,35 @@ class OutputFormatter implements WrappableOutputFormatterInterface
             return $this->isDecorated() ? $this->styleStack->getCurrent()->apply($text) : $text;
         }
 
-        if (!$currentLineLength && '' !== $current) {
+        $prefix = '';
+        $visibleText = str_contains($text, "\e") ? preg_replace(self::ANSI_REGEX, '', $text) : $text;
+
+        if ($currentLineLength >= $width) {
+            // the current line is full: drop the whitespace that follows and break the line before the next character
             if (str_contains($text, "\e")) {
-                $text = preg_replace_callback('/^(?:[\\x00\\x09-\\x0B\\x0D\\x20]|'.self::ANSI_PATTERN.')++/', static function ($match) {
+                $text = preg_replace_callback('/^(?:[\\x00\\x09\\x0B\\x0D\\x20]|'.self::ANSI_PATTERN.')++/', static function ($match) {
                     preg_match_all(self::ANSI_REGEX, $match[0], $ansi);
 
                     return implode('', $ansi[0]);
                 }, $text);
+                $visibleText = ltrim($visibleText, " \t\r\0\x0B");
             } else {
-                $text = ltrim($text);
+                $text = $visibleText = ltrim($text, " \t\r\0\x0B");
             }
+
+            // whitespace at the end of the message still breaks the line
+            if ($lineBreak = '' === $visibleText) {
+                return '' === $text || !$this->isDecorated() ? $text : $this->styleStack->getCurrent()->apply($text);
+            }
+
+            if ("\n" !== $visibleText[0]) {
+                $prefix = "\n";
+            }
+
+            $currentLineLength = 0;
         }
+
+        $trailingNewlines = \strlen($visibleText) - \strlen(rtrim($visibleText, "\n"));
 
         if ($currentLineLength) {
             $lines = explode("\n", $text, 2);
@@ -263,11 +286,8 @@ class OutputFormatter implements WrappableOutputFormatterInterface
 
                 $text .= $lines[1];
             }
-        } else {
-            $prefix = '';
         }
 
-        preg_match('/(\\n)(?:'.self::ANSI_PATTERN.')*+$/', $text, $matches);
         $text = $prefix.$this->addLineBreaks($text, $width);
         if (str_contains($text, "\e")) {
             $parts = preg_split('/('.self::ANSI_PATTERN.')/', $text, -1, \PREG_SPLIT_DELIM_CAPTURE);
@@ -283,33 +303,19 @@ class OutputFormatter implements WrappableOutputFormatterInterface
         } else {
             $text = rtrim($text, "\n");
         }
-        $text .= $matches[1] ?? '';
-
-        if (!$currentLineLength && '' !== $current && !str_ends_with($current, "\n")) {
-            $text = "\n".$text;
-        }
+        $text .= str_repeat("\n", $trailingNewlines);
 
         $lines = explode("\n", $text);
 
         foreach ($lines as $i => $line) {
             $lineLength = Helper::length(str_contains($line, "\e") ? preg_replace(self::ANSI_REGEX, '', $line) : $line);
             $currentLineLength = 0 === $i ? $currentLineLength + $lineLength : $lineLength;
-            if ($width <= $currentLineLength) {
-                $currentLineLength = 0;
-            }
         }
 
-        $currentLines = [];
         foreach ($lines as $i => $line) {
-            $lines[$i] = $line = str_replace(['\\<', '\\>'], ['<', '>'], $line);
-            $currentLine = str_contains($line, "\e") ? preg_replace(self::ANSI_REGEX, '', $line) : $line;
-            if ($this->isDecorated()) {
-                $lines[$i] = $this->styleStack->getCurrent()->apply($line);
-                $currentLine = $currentLine === $line ? $lines[$i] : $this->styleStack->getCurrent()->apply($currentLine);
-            }
-            $currentLines[] = $currentLine;
+            $line = str_replace(['\\<', '\\>'], ['<', '>'], $line);
+            $lines[$i] = $this->isDecorated() ? $this->styleStack->getCurrent()->apply($line) : $line;
         }
-        $current .= implode("\n", $currentLines);
 
         return implode("\n", $lines);
     }

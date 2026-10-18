@@ -1873,6 +1873,26 @@ class TableTest extends TestCase
         $this->assertEquals($expected, $this->getOutputContent($output));
     }
 
+    public function testColumnMaxWidthsWithStyledLineFollowedByWhitespace()
+    {
+        (new Table($output = $this->getOutputStream()))
+            ->setColumnMaxWidth(0, 6)
+            ->setRows([['<info>abcdef</info> ', 'x']])
+            ->render()
+        ;
+
+        $expected =
+            <<<'TABLE'
+                +--------+---+
+                | abcdef | x |
+                |        |   |
+                +--------+---+
+
+                TABLE;
+
+        $this->assertSame($expected, $this->getOutputContent($output));
+    }
+
     public function testColumnMaxWidthsWithTrailingBackslash()
     {
         (new Table($output = $this->getOutputStream()))
