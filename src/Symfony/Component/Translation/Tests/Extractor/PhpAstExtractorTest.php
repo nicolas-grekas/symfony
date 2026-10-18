@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Translation\Extractor\PhpAstExtractor;
 use Symfony\Component\Translation\Extractor\Visitor\ConstraintVisitor;
+use Symfony\Component\Translation\Extractor\Visitor\FormVisitor;
 use Symfony\Component\Translation\Extractor\Visitor\TranslatableMessageVisitor;
 use Symfony\Component\Translation\Extractor\Visitor\TransMethodVisitor;
 use Symfony\Component\Translation\MessageCatalogue;
@@ -350,6 +351,43 @@ final class PhpAstExtractorTest extends TestCase
         $this->assertEquals(['sources' => [$filename.':11', $filename.':12', $filename.':13']], $catalogue->getMetadata('method-return-variable-draft'));
     }
 
+    #[DataProvider('formResourcesProvider')]
+    public function testExtractionOfFormOptions(iterable|string $resource)
+    {
+        $extractor = new PhpAstExtractor([new FormVisitor()]);
+        $catalogue = new MessageCatalogue('en');
+
+        $extractor->extract($resource, $catalogue);
+
+        $this->assertEquals([
+            'messages' => [
+                'form-label' => 'form-label',
+                'form-label-with-help' => 'form-label-with-help',
+                'form-help' => 'form-help',
+                'form-placeholder' => 'form-placeholder',
+                'form-label-new' => 'form-label-new',
+                'form-label-edit' => 'form-label-edit',
+                'form-label-from-create' => 'form-label-from-create',
+                'form-label-from-named-argument' => 'form-label-from-named-argument',
+            ],
+            'form_domain' => [
+                'form-label-other-domain' => 'form-label-other-domain',
+                'form-help-other-domain' => 'form-help-other-domain',
+                'form-label-in-its-own-domain' => 'form-label-in-its-own-domain',
+            ],
+            'admin' => [
+                'form-label-in-the-domain-of-the-type' => 'form-label-in-the-domain-of-the-type',
+                'form-label-added-by-a-listener' => 'form-label-added-by-a-listener',
+            ],
+            'settings' => [
+                'form-label-translated-in-a-type-without-translation' => 'form-label-translated-in-a-type-without-translation',
+            ],
+        ], $catalogue->all());
+
+        $filename = str_replace(\DIRECTORY_SEPARATOR, '/', __DIR__).'/../Fixtures/extractor-ast-form/PostType.php';
+        $this->assertEquals(['sources' => [$filename.':16']], $catalogue->getMetadata('form-help'));
+    }
+
     public static function resourcesProvider(): array
     {
         $directory = __DIR__.'/../Fixtures/extractor-ast/';
@@ -373,5 +411,13 @@ final class PhpAstExtractorTest extends TestCase
             [new \ArrayObject(glob($directory.'*'))],
             [new \ArrayObject($splFiles)],
         ];
+    }
+
+    public static function formResourcesProvider(): iterable
+    {
+        $directory = __DIR__.'/../Fixtures/extractor-ast-form/';
+
+        yield [$directory];
+        yield [glob($directory.'*.php')];
     }
 }
