@@ -71,7 +71,7 @@ class ServicesResetter implements ServicesResetterInterface
     }
 
     /**
-     * @param list<string|array{string, bool, 'flag'|'only'|null}> $methods
+     * @param list<string|array{string, bool, 'flag'|'only'|null}|array<string, 'flag'|'only'|null>> $methods
      */
     private function resetInstance(object $service, array $methods, ?\Throwable &$throwable, bool $shutdown): void
     {
@@ -81,6 +81,11 @@ class ServicesResetter implements ServicesResetterInterface
 
         foreach ($methods as $resetMethod) {
             if (\is_array($resetMethod)) {
+                if (\is_string($method = array_key_first($resetMethod))) {
+                    // a container compiled by an older 8.2-dev lists the methods as [$method => $onShutdown]
+                    $resetMethod = [ltrim($method, '?'), '?' === $method[0], $resetMethod[$method]];
+                }
+
                 [$resetMethod, $optional, $onShutdown] = $resetMethod;
 
                 if (!$shutdown && 'only' === $onShutdown) {
