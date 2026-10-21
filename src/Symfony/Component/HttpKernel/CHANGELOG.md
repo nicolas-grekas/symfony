@@ -36,6 +36,7 @@ CHANGELOG
  * Add the `$stream` argument to `#[Serialize]` and the `$streamWriter` and `$typeResolver` arguments to `SerializeControllerResultAttributeListener` to stream controller results as JSON with the stream writer
  * Add `RateLimitValueResolver` to inject the rate limit consumed by `#[RateLimit]` into the `RateLimit` controller arguments
  * Add the `$target` argument to `#[Cache]` to set the targeted cache directives defined by RFC 9213, e.g. `CDN-Cache-Control`
+ * Show previous exceptions in the profiler instead of cutting them
 
 8.1
 ---
