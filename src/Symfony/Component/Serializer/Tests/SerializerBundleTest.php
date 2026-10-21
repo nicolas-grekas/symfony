@@ -18,14 +18,17 @@ use Symfony\Bridge\Doctrine\Serializer\Normalizer\CollectionDenormalizer;
 use Symfony\Bridge\PhpUnit\ClassExistsMock;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\DependencyInjection\Compiler\DecoratorServicePass;
 use Symfony\Component\DependencyInjection\Compiler\MergeExtensionConfigurationPass;
 use Symfony\Component\DependencyInjection\Compiler\RemoveMissingDependenciesPass as ContainerRemoveMissingDependenciesPass;
 use Symfony\Component\DependencyInjection\Compiler\ResolveBindingsPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Serializer\DependencyInjection\RemoveMissingDependenciesPass;
+use Symfony\Component\Serializer\Mapping\Factory\SharedClassMetadataFactory;
 use Symfony\Component\Serializer\DependencyInjection\SerializerPass;
 use Symfony\Component\Serializer\Encoder\JsonDecode;
 use Symfony\Component\Serializer\Mapping\Loader\YamlFileLoader;
@@ -154,6 +157,17 @@ class SerializerBundleTest extends TestCase
 
         $cache = $container->getDefinition('serializer.mapping.cache_class_metadata_factory')->getArgument(1);
         $this->assertEquals(new Reference('cache.serializer'), $cache);
+    }
+
+    public function testTheMetadataIsSharedByTheContainersOfTheSameBuildOutsideDebugMode()
+    {
+        $container = $this->load(['enabled' => true]);
+        new DecoratorServicePass()->process($container);
+        $definition = $container->findDefinition('serializer.mapping.class_metadata_factory');
+
+        $this->assertSame(SharedClassMetadataFactory::class, $definition->getClass());
+        $this->assertEquals(new Parameter('container.build_id'), $definition->getArgument(1));
+        $this->assertFalse($this->load(['enabled' => true], debug: true)->hasDefinition('serializer.mapping.shared_class_metadata_factory'));
     }
 
     public function testSerializerMappingFilesAreTrackedWhenCacheIsUsed()
