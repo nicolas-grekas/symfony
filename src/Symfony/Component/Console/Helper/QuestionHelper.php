@@ -63,6 +63,10 @@ class QuestionHelper extends Helper
             $this->inputStream = $stream;
         }
 
+        if ($output instanceof ConsoleSectionOutput) {
+            $output->hideSectionsBelow();
+        }
+
         try {
             if (!$question->getValidator()) {
                 return $this->doAsk($output, $question);
@@ -79,6 +83,10 @@ class QuestionHelper extends Helper
             }
 
             return $fallbackOutput;
+        } finally {
+            if ($output instanceof ConsoleSectionOutput) {
+                $output->showSectionsBelow();
+            }
         }
     }
 

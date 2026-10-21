@@ -345,13 +345,20 @@ class SymfonyStyle extends OutputStyle
 
     public function askQuestion(Question $question): mixed
     {
+        $section = $this->output instanceof ConsoleSectionOutput ? $this->output : null;
+
         if ($this->input->isInteractive()) {
+            $section?->hideSectionsBelow();
             $this->autoPrependBlock();
         }
 
         $this->questionHelper ??= new SymfonyQuestionHelper();
 
-        $answer = $this->questionHelper->ask($this->input, $this, $question);
+        try {
+            $answer = $this->questionHelper->ask($this->input, $this, $question);
+        } finally {
+            $section?->showSectionsBelow();
+        }
 
         if ($this->input->isInteractive()) {
             if ($this->output instanceof ConsoleSectionOutput) {
