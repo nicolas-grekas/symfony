@@ -14,6 +14,7 @@ CHANGELOG
  * Add argument `$skipValidationDirs` to `XliffFileLoader` to load the XLIFF files of these directories without validating them against the schema
  * Add `HtmlTranslator` to translate messages whose tags are replaced by HTML elements while everything else is escaped
  * Add `getGlobalParameters()` to `LoggingTranslator` and `PseudoLocalizationTranslator`
+ * Add `FormVisitor` to extract the labels, help messages and placeholders of form fields, and make `AbstractVisitor::getStringValues()` protected
 
 8.1
 ---
