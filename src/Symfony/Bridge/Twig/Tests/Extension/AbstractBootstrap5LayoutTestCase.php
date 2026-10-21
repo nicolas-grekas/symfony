@@ -1894,6 +1894,85 @@ abstract class AbstractBootstrap5LayoutTestCase extends AbstractBootstrap4Layout
         );
     }
 
+    public function testFloatingLabelWithMoney()
+    {
+        $form = $this->factory->createNamed('name', MoneyType::class, null, [
+            'currency' => 'EUR',
+            'attr' => [
+                'placeholder' => 'name',
+            ],
+            'row_attr' => [
+                'class' => 'form-floating mb-3',
+            ],
+        ]);
+
+        $html = $this->renderRow($form->createView());
+
+        $this->assertMatchesXpath($html,
+            '/div
+    [@class="form-floating mb-3"]
+    [
+        ./div
+            [@class="input-group "]
+            [
+                ./span
+                    [@class="input-group-text"]
+                    [contains(.., "€")]
+                /following-sibling::div
+                    [@class="form-floating"]
+                    [
+                        ./input
+                            [@id="name"]
+                            [@placeholder="[trans]name[/trans]"]
+                        /following-sibling::label
+                            [@for="name"]
+                    ]
+            ]
+    ]
+    [count(.//label)=1]
+'
+        );
+    }
+
+    public function testFloatingLabelWithPercent()
+    {
+        $form = $this->factory->createNamed('name', PercentType::class, null, [
+            'attr' => [
+                'placeholder' => 'name',
+            ],
+            'row_attr' => [
+                'class' => 'form-floating mb-3',
+            ],
+        ]);
+
+        $html = $this->renderRow($form->createView());
+
+        $this->assertMatchesXpath($html,
+            '/div
+    [@class="form-floating mb-3"]
+    [
+        ./div
+            [@class="input-group"]
+            [
+                ./div
+                    [@class="form-floating"]
+                    [
+                        ./input
+                            [@id="name"]
+                            [@placeholder="[trans]name[/trans]"]
+                        /following-sibling::label
+                            [@for="name"]
+                    ]
+                /following-sibling::span
+                    [@class="input-group-text"]
+                    [contains(.., "%")]
+            ]
+    ]
+    [count(.//label)=1]
+'
+        );
+    }
+
     public function testDateTimeWithError()
     {
         $form = $this->factory->createNamed('name', DateTimeType::class, null, [

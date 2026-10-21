@@ -15,6 +15,8 @@ use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\MoneyType;
+use Symfony\Component\Form\Extension\Core\Type\PercentType;
 use Symfony\Component\Form\Extension\Core\Type\RadioType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormError;
@@ -347,6 +349,97 @@ abstract class AbstractBootstrap5HorizontalLayoutTestCase extends AbstractBootst
                     ]
             ]
     ]
+'
+        );
+    }
+
+    public function testFloatingLabelWithMoney()
+    {
+        $form = $this->factory->createNamed('name', MoneyType::class, null, [
+            'currency' => 'EUR',
+            'attr' => [
+                'placeholder' => 'name',
+            ],
+            'row_attr' => [
+                'class' => 'form-floating mb-3',
+            ],
+        ]);
+
+        $html = $this->renderRow($form->createView());
+
+        $this->assertMatchesXpath($html,
+            '/div
+    [@class="mb-3 row"]
+    [
+        ./div
+            [@class="col-sm-2"]
+        /following-sibling::div
+            [@class="col-sm-10"]
+            [
+                ./div
+                    [@class="input-group "]
+                    [
+                        ./span
+                            [@class="input-group-text"]
+                            [contains(.., "€")]
+                        /following-sibling::div
+                            [@class="form-floating"]
+                            [
+                                ./input
+                                    [@id="name"]
+                                    [@placeholder="[trans]name[/trans]"]
+                                /following-sibling::label
+                                    [@for="name"]
+                            ]
+                    ]
+            ]
+    ]
+    [count(.//label)=1]
+'
+        );
+    }
+
+    public function testFloatingLabelWithPercent()
+    {
+        $form = $this->factory->createNamed('name', PercentType::class, null, [
+            'attr' => [
+                'placeholder' => 'name',
+            ],
+            'row_attr' => [
+                'class' => 'form-floating mb-3',
+            ],
+        ]);
+
+        $html = $this->renderRow($form->createView());
+
+        $this->assertMatchesXpath($html,
+            '/div
+    [@class="mb-3 row"]
+    [
+        ./div
+            [@class="col-sm-2"]
+        /following-sibling::div
+            [@class="col-sm-10"]
+            [
+                ./div
+                    [@class="input-group"]
+                    [
+                        ./div
+                            [@class="form-floating"]
+                            [
+                                ./input
+                                    [@id="name"]
+                                    [@placeholder="[trans]name[/trans]"]
+                                /following-sibling::label
+                                    [@for="name"]
+                            ]
+                        /following-sibling::span
+                            [@class="input-group-text"]
+                            [contains(.., "%")]
+                    ]
+            ]
+    ]
+    [count(.//label)=1]
 '
         );
     }
