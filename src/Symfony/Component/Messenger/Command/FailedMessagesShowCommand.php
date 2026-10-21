@@ -89,7 +89,7 @@ class FailedMessagesShowCommand extends AbstractFailedMessagesCommand
     {
         /** @var ListableReceiverInterface $receiver */
         $receiver = $this->getReceiver($failedTransportName);
-        $envelopes = $receiver->all($max);
+        $envelopes = $receiver->all($classFilter ? null : $max);
 
         $rows = [];
 
@@ -100,6 +100,10 @@ class FailedMessagesShowCommand extends AbstractFailedMessagesCommand
         $this->phpSerializer?->acceptPhpIncompleteClass();
         try {
             foreach ($envelopes as $envelope) {
+                if (\count($rows) >= $max) {
+                    break;
+                }
+
                 $currentClassName = $envelope->getMessage()::class;
 
                 if ($classFilter && $classFilter !== $currentClassName) {
