@@ -30,6 +30,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
     private bool $decorated;
     private array $styles = [];
     private OutputFormatterStyleStack $styleStack;
+    private array $charWidths = [];
 
     public function __clone()
     {
@@ -176,6 +177,11 @@ class OutputFormatter implements WrappableOutputFormatterInterface
 
         $output .= $this->applyCurrentStyle(substr($message, $offset), $current, $width, $currentLineLength);
 
+        if ($width && str_contains($output, "\r")) {
+            // keep "\r\n" line breaks together when ANSI codes end the line
+            $output = preg_replace('/\r((?:'.self::ANSI_PATTERN.')++)(?=\n|$)/', "\$1\r", $output);
+        }
+
         return str_replace("\0", '\\', $output);
     }
 
@@ -238,6 +244,8 @@ class OutputFormatter implements WrappableOutputFormatterInterface
             return $this->isDecorated() ? $this->styleStack->getCurrent()->apply($text) : $text;
         }
 
+        $text = str_replace(['\\<', '\\>'], ['<', '>'], $text);
+
         if (!$currentLineLength && '' !== $current) {
             if (str_contains($text, "\e")) {
                 $text = preg_replace_callback('/^(?:[\\x00\\x09-\\x0B\\x0D\\x20]|'.self::ANSI_PATTERN.')++/', static function ($match) {
@@ -252,13 +260,31 @@ class OutputFormatter implements WrappableOutputFormatterInterface
 
         if ($currentLineLength) {
             $lines = explode("\n", $text, 2);
-            $prefix = $this->substr($lines[0], 0, $i = $width - $currentLineLength)."\n";
-            $text = $this->substr($lines[0], $i);
+            $eol = "\n";
+            if (isset($lines[1]) && str_ends_with($lines[0], "\r")) {
+                $lines[0] = substr($lines[0], 0, -1);
+                $eol = "\r\n";
+            }
+            $i = $width - $currentLineLength;
+            if ($widths = $this->getWidths($lines[0])) {
+                $room = $i;
+                $i = \count($widths);
+                foreach ($widths as $j => $charWidth) {
+                    if (0 > $room -= $charWidth) {
+                        $i = $j;
+                        break;
+                    }
+                }
+            }
+            $prefix = ($i ? $this->substr($lines[0], 0, $i) : '')."\n";
+            $text = $i ? $this->substr($lines[0], $i) : $lines[0];
 
             if (isset($lines[1])) {
                 // $prefix may contain the full first line in which the \n is already a part of $prefix.
                 if ('' !== $text) {
-                    $text .= "\n";
+                    $text .= $eol;
+                } else {
+                    $prefix = substr($prefix, 0, -1).$eol;
                 }
 
                 $text .= $lines[1];
@@ -292,7 +318,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
         $lines = explode("\n", $text);
 
         foreach ($lines as $i => $line) {
-            $lineLength = Helper::length(str_contains($line, "\e") ? preg_replace(self::ANSI_REGEX, '', $line) : $line);
+            $lineLength = array_sum($this->getWidths($line)) ?: Helper::length(str_contains($line, "\e") ? preg_replace(self::ANSI_REGEX, '', $line) : $line);
             $currentLineLength = 0 === $i ? $currentLineLength + $lineLength : $lineLength;
             if ($width <= $currentLineLength) {
                 $currentLineLength = 0;
@@ -301,7 +327,6 @@ class OutputFormatter implements WrappableOutputFormatterInterface
 
         $currentLines = [];
         foreach ($lines as $i => $line) {
-            $lines[$i] = $line = str_replace(['\\<', '\\>'], ['<', '>'], $line);
             $currentLine = str_contains($line, "\e") ? preg_replace(self::ANSI_REGEX, '', $line) : $line;
             if ($this->isDecorated()) {
                 $lines[$i] = $this->styleStack->getCurrent()->apply($line);
@@ -317,8 +342,9 @@ class OutputFormatter implements WrappableOutputFormatterInterface
     private function addLineBreaks(string $text, int $width): string
     {
         $encoding = mb_detect_encoding($text, null, true) ?: 'UTF-8';
+        $widths = $this->getWidths($text);
 
-        if (!str_contains($text, "\e")) {
+        if (!$widths && !str_contains($text, "\e") && !str_contains($text, "\r\n")) {
             return b($text)->toUnicodeString($encoding)->wordwrap($width, "\n", true)->toByteString($encoding);
         }
 
@@ -331,7 +357,7 @@ class OutputFormatter implements WrappableOutputFormatterInterface
             }
             $chars[] = [$pending, $token];
             $pending = '';
-            $mask .= "\n" === $token ? '#' : (' ' === $token ? ' ' : '?');
+            $mask .= "\n" === $token || "\r\n" === $token ? '#' : (' ' === $token ? ' ' : '?');
         }
 
         if (!$chars) {
@@ -339,15 +365,17 @@ class OutputFormatter implements WrappableOutputFormatterInterface
         }
 
         $wrapped = rtrim($mask, '#');
-        $mask = wordwrap($wrapped, $width, '#', true).substr($mask, \strlen($wrapped));
+        $mask = ($widths ? $this->wordwrap($wrapped, $width, $widths) : wordwrap($wrapped, $width, '#', true)).substr($mask, \strlen($wrapped));
         $result = '';
         $j = 0;
         foreach (str_split($mask) as $char) {
             if ('#' === $char) {
-                if (isset($chars[$j]) && ("\n" === $chars[$j][1] || ' ' === $chars[$j][1])) {
+                $eol = "\n";
+                if (isset($chars[$j]) && ("\n" === $chars[$j][1] || "\r\n" === $chars[$j][1] || ' ' === $chars[$j][1])) {
+                    $eol = ' ' === $chars[$j][1] ? "\n" : $chars[$j][1];
                     $result .= $chars[$j++][0];
                 }
-                $result .= "\n";
+                $result .= $eol;
             } else {
                 $result .= implode('', $chars[$j++]);
             }
@@ -391,5 +419,79 @@ class OutputFormatter implements WrappableOutputFormatterInterface
                 yield (string) $char->toByteString($encoding);
             }
         }
+    }
+
+    /**
+     * Returns the number of columns of each visible character, or an empty array when none uses more than one column.
+     *
+     * @return list<int>
+     */
+    private function getWidths(string $text): array
+    {
+        if (1 !== preg_match('/[^\x00-\x{10FF}]/u', $text)) {
+            return [];
+        }
+
+        $widths = [];
+        $wide = false;
+        foreach ($this->getTokens($text) as $token) {
+            if (!preg_match(self::ANSI_REGEX, $token)) {
+                $widths[] = $charWidth = 2 < \strlen($token) ? ($this->charWidths[$token] ??= Helper::width($token)) : 1;
+                $wide = $wide || 1 < $charWidth;
+            }
+        }
+
+        return $wide ? $widths : [];
+    }
+
+    /**
+     * Wraps a mask like wordwrap() does when cutting long words, but using the number of columns of each character.
+     *
+     * @param list<int> $widths
+     */
+    private function wordwrap(string $mask, int $width, array $widths): string
+    {
+        $result = '';
+        $start = $lastSpace = $lineWidth = 0;
+
+        for ($i = 0, $length = \strlen($mask); $i < $length; ++$i) {
+            if ('#' === $mask[$i]) {
+                $result .= substr($mask, $start, $i + 1 - $start);
+                $start = $lastSpace = $i + 1;
+                $lineWidth = 0;
+
+                continue;
+            }
+
+            if (' ' === $mask[$i]) {
+                if ($lineWidth >= $width) {
+                    $result .= substr($mask, $start, $i - $start).'#';
+                    $start = $i + 1;
+                    $lineWidth = 0;
+                } else {
+                    ++$lineWidth;
+                }
+                $lastSpace = $i;
+
+                continue;
+            }
+
+            if ($lineWidth + $widths[$i] > $width && $start < $lastSpace) {
+                $result .= substr($mask, $start, $lastSpace - $start).'#';
+                $start = $lastSpace = $lastSpace + 1;
+                $lineWidth = array_sum(\array_slice($widths, $start, $i - $start));
+            }
+
+            // cut long words, and also before a wide character that still doesn't fit after breaking at the last space
+            if ($lineWidth && $lineWidth + $widths[$i] > $width) {
+                $result .= substr($mask, $start, $i - $start).'#';
+                $start = $lastSpace = $i;
+                $lineWidth = 0;
+            }
+
+            $lineWidth += $widths[$i];
+        }
+
+        return $result.substr($mask, $start);
     }
 }

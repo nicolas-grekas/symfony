@@ -384,7 +384,7 @@ class OutputFormatterTest extends TestCase
         $this->assertSame("fo\e[31mo\nbar\e[0m", $formatter->formatAndWrap("fo\e[31mobar\e[0m", 3));
         $this->assertSame("\e[0;38;5;208m  foo\e[m", $formatter->formatAndWrap("\e[0;38;5;208m  foo\e[m", 8));
         $this->assertSame("\e[31mfoo\e[0m\n\e[32mbar\e[0m", $formatter->formatAndWrap("\e[31mfoo\e[0m\n\e[32mbar\e[0m", 3));
-        $this->assertSame("\e[31m👩‍🌾f\noo\e[0m", $formatter->formatAndWrap("\e[31m👩‍🌾foo\e[0m", 2));
+        $this->assertSame("\e[31m👩‍🌾\nfo\no\e[0m", $formatter->formatAndWrap("\e[31m👩‍🌾foo\e[0m", 2));
         $this->assertSame("\e[32mabc\e[39m\e[0m", $formatter->formatAndWrap("<info>abc</info>\e[0m", 3));
         $this->assertSame("\e[32mab\e[39m\e[31mcd\e[0m", $formatter->formatAndWrap("<info>ab</info>\e[31mcd\e[0m", 4));
         $this->assertSame("\e[32mab\e[39m\e[31mcd\nef\e[0m", $formatter->formatAndWrap("<info>ab</info>\e[31mcdef\e[0m", 4));
@@ -400,6 +400,43 @@ class OutputFormatterTest extends TestCase
         $this->assertSame($message, $formatter->formatAndWrap($message, 5));
         $this->assertSame("\e[32mabcde\e[39m\n\e[31mbar", $formatter->formatAndWrap("<info>abcde</info>\e[31m".str_repeat(' ', 20000).'bar', 5));
         $this->assertSame("\e[31mfoo".str_repeat("\e[0m", 20000)."\n", $formatter->formatAndWrap("\e[31mfoo\n".str_repeat("\e[0m", 20000), 5));
+    }
+
+    public function testFormatAndWrapWithWideCharacters()
+    {
+        $formatter = new OutputFormatter(true);
+
+        $this->assertSame("字字\n字字\n字", $formatter->formatAndWrap('字字字字字', 4));
+        $this->assertSame("ab\n字字\nc", $formatter->formatAndWrap('ab 字字 c', 4));
+        $this->assertSame("\e[31m字\n字\e[0m", $formatter->formatAndWrap("\e[31m字字\e[0m", 3));
+        $this->assertSame("a\e[37;41m\e[39;49m\n\e[37;41m字\e[39;49m\n\e[37;41m字\e[39;49m", $formatter->formatAndWrap('a<error>字字</error>', 2));
+
+        $formatter = new OutputFormatter();
+
+        $this->assertSame("a\n字\n字", $formatter->formatAndWrap('a<error>字字</error>', 2));
+        $this->assertSame("a\n\e[31m字\n字", $formatter->formatAndWrap("a<error>\e[31m字字</error>", 2));
+        $this->assertSame("字a\nbc", $formatter->formatAndWrap('字<error>abc</error>', 3));
+        $this->assertSame("a\u{200B}字字", $formatter->formatAndWrap("a\u{200B}字字", 5));
+        $this->assertSame("a字\u{200B}\u{200B}", $formatter->formatAndWrap("a<error>字\u{200B}\u{200B}</error>", 3));
+    }
+
+    public function testFormatAndWrapWithWindowsLineEndings()
+    {
+        $formatter = new OutputFormatter(true);
+
+        $this->assertSame("Lorem\nipsum\r\ndolor\nsit\namet", $formatter->formatAndWrap("Lorem ipsum\r\ndolor sit amet", 5));
+        $this->assertSame("\e[32mLorem\e[39m\n\e[32mipsum\e[39m\r\n\e[32mdolor\e[39m", $formatter->formatAndWrap("<info>Lorem ipsum\r\ndolor</info>", 5));
+        $this->assertSame("\e[32mabc\e[39mdef\r\nghi", $formatter->formatAndWrap("<info>abc</info>def\r\nghi", 6));
+        $this->assertSame("\e[32mabc\e[39mdef\ngh\r\nij", $formatter->formatAndWrap("<info>abc</info>defgh\r\nij", 6));
+    }
+
+    public function testFormatAndWrapWithEscapedCharacters()
+    {
+        $formatter = new OutputFormatter(true);
+
+        $this->assertSame("ab<\ncd", $formatter->formatAndWrap('ab\<cd', 3));
+        $this->assertSame("a<b>\nc", $formatter->formatAndWrap('a\<b\> c', 4));
+        $this->assertSame("a字<\n字", $formatter->formatAndWrap('a字\<字', 4));
     }
 
     public function testFormatAndWrap()
