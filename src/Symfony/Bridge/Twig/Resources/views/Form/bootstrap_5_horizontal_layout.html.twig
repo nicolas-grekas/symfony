@@ -40,7 +40,9 @@
             {%- if is_form_floating or is_input_group -%}
                 <div class="{{ block('form_label_class') }}"></div>
                 <div class="{{ block('form_group_class') }}">
-                    {%- if is_form_floating -%}
+                    {%- if is_form_floating and floating_label_in_widget|default(false) -%}
+                        {{- form_widget(form, widget_attr|merge({floating_label_in_widget: true})) -}}
+                    {%- elseif is_form_floating -%}
                         <div class="form-floating">
                             {{- form_widget(form, widget_attr) -}}
                             {{- form_label(form) -}}

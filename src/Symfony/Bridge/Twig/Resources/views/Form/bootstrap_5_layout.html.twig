@@ -10,7 +10,14 @@
             {%- if prepend -%}
                 <span class="input-group-text">{{ money_pattern|form_encode_currency }}</span>
             {%- endif -%}
-            {{- block('form_widget_simple') -}}
+            {%- if floating_label_in_widget|default(false) -%}
+                <div class="form-floating">
+                    {{- block('form_widget_simple') -}}
+                    {{- form_label(form) -}}
+                </div>
+            {%- else -%}
+                {{- block('form_widget_simple') -}}
+            {%- endif -%}
             {%- if append -%}
                 <span class="input-group-text">{{ money_pattern|form_encode_currency }}</span>
             {%- endif -%}
@@ -166,7 +173,14 @@
 {% block percent_widget -%}
     {%- if symbol -%}
         <div class="input-group">
-            {{- block('form_widget_simple') -}}
+            {%- if floating_label_in_widget|default(false) -%}
+                <div class="form-floating">
+                    {{- block('form_widget_simple') -}}
+                    {{- form_label(form) -}}
+                </div>
+            {%- else -%}
+                {{- block('form_widget_simple') -}}
+            {%- endif -%}
             <span class="input-group-text">{{ symbol|default('%') }}</span>
         </div>
     {%- else -%}
@@ -330,7 +344,9 @@
     {%- endif -%}
     {%- set row_class = row_class|default(row_attr.class|default('mb-3')|trim) -%}
     <{{ element|default('div') }}{% with {attr: row_attr|merge({class: row_class})} %}{{ block('attributes') }}{% endwith %}>
-        {%- if 'form-floating' in row_class -%}
+        {%- if 'form-floating' in row_class and floating_label_in_widget|default(false) -%}
+            {{- form_widget(form, widget_attr|merge({floating_label_in_widget: true})) -}}
+        {%- elseif 'form-floating' in row_class -%}
             {{- form_widget(form, widget_attr) -}}
             {{- form_label(form) -}}
         {%- else -%}
@@ -341,6 +357,16 @@
         {{- form_errors(form) -}}
     </{{ element|default('div') }}>
 {%- endblock form_row %}
+
+{%- block money_row -%}
+    {%- set floating_label_in_widget = not (money_pattern starts with '{{') or not (money_pattern ends with '}}') -%}
+    {{- block('form_row') -}}
+{%- endblock money_row %}
+
+{%- block percent_row -%}
+    {%- set floating_label_in_widget = symbol is not empty -%}
+    {{- block('form_row') -}}
+{%- endblock percent_row %}
 
 {%- block button_row -%}
     <div{% with {attr: row_attr|merge({class: row_attr.class|default('mb-3')|trim})} %}{{ block('attributes') }}{% endwith %}>
