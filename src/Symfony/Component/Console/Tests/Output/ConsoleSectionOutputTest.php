@@ -467,6 +467,40 @@ class ConsoleSectionOutputTest extends TestCase
         $this->assertSame('What\'s your favorite super hero?'.\PHP_EOL."\x1b[2A\x1b[0J", stream_get_contents($output->getStream()));
     }
 
+    public function testAskQuestionInSectionWithSectionsBelow()
+    {
+        $inputStream = fopen('php://memory', 'r+', false);
+        fwrite($inputStream, "Batman & Robin\n");
+        rewind($inputStream);
+
+        $input = $this->createMock(StreamableInputInterface::class);
+        $input->expects($this->once())->method('isInteractive')->willReturn(true);
+        $input->expects($this->once())->method('getStream')->willReturn($inputStream);
+
+        $sections = [];
+        $output1 = new ConsoleSectionOutput($this->stream, $sections, OutputInterface::VERBOSITY_NORMAL, true, new OutputFormatter());
+        $output2 = new ConsoleSectionOutput($this->stream, $sections, OutputInterface::VERBOSITY_NORMAL, true, new OutputFormatter());
+
+        $output2->writeln('Progress');
+
+        $question = new Question('What\'s your favorite super hero?');
+        $question->setValidator(function (string $answer) use (&$displayWhileAnswering): string {
+            rewind($this->stream);
+            $displayWhileAnswering = stream_get_contents($this->stream);
+
+            return $answer;
+        });
+
+        (new QuestionHelper())->ask($input, $output1, $question);
+        $output2->overwrite('Done');
+
+        $this->assertSame('Progress'.\PHP_EOL."\x1b[1A\x1b[0J".'What\'s your favorite super hero?'.\PHP_EOL, $displayWhileAnswering);
+
+        rewind($this->stream);
+        $this->assertSame($displayWhileAnswering.'Progress'.\PHP_EOL."\x1b[1A\x1b[0J".'Done'.\PHP_EOL, stream_get_contents($this->stream));
+        $this->assertSame('What\'s your favorite super hero?'.\PHP_EOL.'Batman & Robin'.\PHP_EOL, $output1->getContent());
+    }
+
     public function testWriteWithoutNewLine()
     {
         $sections = [];
