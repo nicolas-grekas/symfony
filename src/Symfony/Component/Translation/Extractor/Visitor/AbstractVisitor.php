@@ -105,7 +105,7 @@ abstract class AbstractVisitor
     /**
      * @return list<string> All the string values the node can resolve to
      */
-    private function getStringValues(Node $node): array
+    protected function getStringValues(Node $node): array
     {
         if ($node instanceof Node\Scalar\String_) {
             return [$node->value];
