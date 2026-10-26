@@ -70,6 +70,8 @@ class MergeCollectionListener implements EventSubscriberInterface
                 $dataToMergeInto = $data;
             }
         } else {
+            $isList = \is_array($dataToMergeInto) && \is_array($data) && array_is_list($dataToMergeInto) && array_is_list($data);
+
             // Calculate delta
             $itemsToAdd = \is_object($data) ? clone $data : $data;
             $itemsToDelete = [];
@@ -104,6 +106,10 @@ class MergeCollectionListener implements EventSubscriberInterface
                         $dataToMergeInto[] = $item;
                     }
                 }
+            }
+
+            if ($isList) {
+                $dataToMergeInto = array_values($dataToMergeInto);
             }
         }
 
