@@ -42,7 +42,7 @@ class EmptyAppTest extends TestCase
 
     private function deleteTempDir()
     {
-        if (!file_exists($dir = sys_get_temp_dir().'/EmptyAppKernel')) {
+        if (!file_exists($dir = sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__))) {
             return;
         }
 
@@ -69,11 +69,11 @@ class EmptyAppKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return sys_get_temp_dir().'/EmptyAppKernel/cache/'.$this->environment;
+        return sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__).'/cache/'.$this->environment;
     }
 
     public function getLogDir(): string
     {
-        return sys_get_temp_dir().'/EmptyAppKernel/logs';
+        return sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__).'/logs';
     }
 }

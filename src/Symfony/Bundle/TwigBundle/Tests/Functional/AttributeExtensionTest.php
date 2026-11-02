@@ -92,7 +92,7 @@ class AttributeExtensionTest extends TestCase
     #[Before, After]
     protected function deleteTempDir()
     {
-        if (file_exists($dir = sys_get_temp_dir().'/'.Kernel::VERSION.'/AttributeExtension')) {
+        if (file_exists($dir = sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__))) {
             (new Filesystem())->remove($dir);
         }
     }
@@ -112,7 +112,7 @@ abstract class AttributeExtensionKernel extends Kernel
 
     public function getProjectDir(): string
     {
-        return sys_get_temp_dir().'/'.Kernel::VERSION.'/AttributeExtension';
+        return sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__).'/'.Kernel::VERSION.'/AttributeExtension';
     }
 }
 
