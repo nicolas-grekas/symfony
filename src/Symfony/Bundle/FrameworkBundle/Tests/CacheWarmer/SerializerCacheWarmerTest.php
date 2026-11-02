@@ -42,7 +42,7 @@ class SerializerCacheWarmerTest extends TestCase
     #[DataProvider('loaderProvider')]
     public function testWarmUp(array $loaders)
     {
-        $file = sys_get_temp_dir().'/cache-serializer.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-serializer.php';
         @unlink($file);
 
         $warmer = new SerializerCacheWarmer($loaders, $file);
@@ -59,10 +59,11 @@ class SerializerCacheWarmerTest extends TestCase
     #[DataProvider('loaderProvider')]
     public function testWarmUpAbsoluteFilePath(array $loaders)
     {
-        $file = sys_get_temp_dir().'/0/cache-serializer.php';
+        $tmpDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+        $file = $tmpDir.'/0/cache-serializer.php';
         @unlink($file);
 
-        $cacheDir = sys_get_temp_dir().'/1';
+        $cacheDir = $tmpDir.'/1';
 
         $warmer = new SerializerCacheWarmer($loaders, $file);
         $warmer->warmUp($cacheDir, $cacheDir);
@@ -79,7 +80,7 @@ class SerializerCacheWarmerTest extends TestCase
     #[DataProvider('loaderProvider')]
     public function testWarmUpWithoutBuildDir(array $loaders)
     {
-        $file = sys_get_temp_dir().'/cache-serializer.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-serializer.php';
         @unlink($file);
 
         $warmer = new SerializerCacheWarmer($loaders, $file);
@@ -115,7 +116,7 @@ class SerializerCacheWarmerTest extends TestCase
 
     public function testWarmUpWithoutLoader()
     {
-        $file = sys_get_temp_dir().'/cache-serializer-without-loader.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-serializer-without-loader.php';
         @unlink($file);
 
         $warmer = new SerializerCacheWarmer([], $file);

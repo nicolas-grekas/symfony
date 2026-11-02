@@ -24,7 +24,7 @@ abstract class MinimalKernel extends Kernel
     {
         parent::__construct('test', false);
 
-        $this->cacheDir = sys_get_temp_dir().'/'.$cacheDir;
+        $this->cacheDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/'.$cacheDir;
     }
 
     public function getCacheDir(): string

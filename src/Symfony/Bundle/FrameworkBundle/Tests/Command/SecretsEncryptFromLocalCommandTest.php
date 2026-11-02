@@ -28,15 +28,16 @@ class SecretsEncryptFromLocalCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->vaultDir = sys_get_temp_dir().'/sf_secrets/vault_'.uniqid();
-        $this->localVaultDir = sys_get_temp_dir().'/sf_secrets/local_'.uniqid();
+        $tmpDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+        $this->vaultDir = $tmpDir.'/vault_'.uniqid();
+        $this->localVaultDir = $tmpDir.'/local_'.uniqid();
         $this->fs = new Filesystem();
         $this->fs->remove([$this->vaultDir, $this->localVaultDir]);
     }
 
     protected function tearDown(): void
     {
-        $this->fs->remove([$this->vaultDir, $this->localVaultDir]);
+        $this->fs->remove(\dirname($this->vaultDir));
     }
 
     public function testFailsWhenLocalVaultIsDisabled()

@@ -29,7 +29,8 @@ class KernelTestCaseHttpCacheTest extends KernelTestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$baseDir = sys_get_temp_dir().'/sf_http_cache_kernel_testcase_'.uniqid('', true);
+        self::$baseDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+        (new Filesystem())->remove(self::$baseDir);
     }
 
     public static function tearDownAfterClass(): void

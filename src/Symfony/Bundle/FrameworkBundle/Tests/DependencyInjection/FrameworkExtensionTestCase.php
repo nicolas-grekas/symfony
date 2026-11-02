@@ -2991,7 +2991,7 @@ abstract class FrameworkExtensionTestCase extends TestCase
     public function testTranslatorDefaultPathContainingAPercentSign()
     {
         // two percent signs are required: "%2Fother%" is what the parameter bag reads as a reference
-        $projectDir = str_replace('\\', '/', sys_get_temp_dir()).'/sf_fwb_my%2Fother%2Fbranch_'.substr(md5(__METHOD__), 0, 8);
+        $projectDir = str_replace('\\', '/', sys_get_temp_dir()).'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/my%2Fother%2Fbranch';
         @mkdir($projectDir.'/translations', 0o777, true);
         file_put_contents($projectDir.'/translations/messages.en.yaml', "hello: Hello there\n");
 
@@ -3141,12 +3141,14 @@ abstract class FrameworkExtensionTestCase extends TestCase
 
     protected function createContainer(array $data = [])
     {
+        $tmpDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+
         return new ContainerBuilder(new EnvPlaceholderParameterBag(array_merge([
             'kernel.bundles' => ['FrameworkBundle' => FrameworkBundle::class],
             'kernel.bundles_metadata' => ['FrameworkBundle' => ['namespace' => 'Symfony\\Bundle\\FrameworkBundle', 'path' => __DIR__.'/../..']],
-            'kernel.cache_dir' => __DIR__,
-            'kernel.build_dir' => __DIR__,
-            'kernel.share_dir' => __DIR__,
+            'kernel.cache_dir' => $tmpDir,
+            'kernel.build_dir' => $tmpDir,
+            'kernel.share_dir' => $tmpDir,
             'kernel.project_dir' => __DIR__,
             'kernel.debug' => false,
             'kernel.environment' => 'test',

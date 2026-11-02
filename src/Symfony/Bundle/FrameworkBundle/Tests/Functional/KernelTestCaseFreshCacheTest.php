@@ -21,7 +21,7 @@ class KernelTestCaseFreshCacheTest extends AbstractWebTestCase
     {
         parent::setUpBeforeClass();
 
-        self::$trackedFile = sys_get_temp_dir().'/'.static::getVarDir().'/tracked_file.yaml';
+        self::$trackedFile = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'.yaml';
     }
 
     public static function tearDownAfterClass(): void
@@ -43,7 +43,6 @@ class KernelTestCaseFreshCacheTest extends AbstractWebTestCase
         static::ensureKernelShutdown();
 
         // Create the tracked file between boots
-        @mkdir(\dirname(self::$trackedFile), 0o777, true);
         file_put_contents(self::$trackedFile, 'placeholder');
 
         // Reboot: should detect the resource change and rebuild the container

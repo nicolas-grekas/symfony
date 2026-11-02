@@ -31,7 +31,7 @@ class PhpConfigReferenceDumpPassTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tempDir = sys_get_temp_dir().'/sf_test_config_reference';
+        $this->tempDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
         mkdir($this->tempDir, 0o777, true);
 
         // Create a read-only directory to simulate write errors
