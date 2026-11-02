@@ -33,11 +33,13 @@ class SendmailTransportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->argsPath = sys_get_temp_dir().\DIRECTORY_SEPARATOR.'sendmail_args';
+        $this->argsPath = sys_get_temp_dir().\DIRECTORY_SEPARATOR.'sf_mailer_'.hash('xxh32', __FILE__);
+        putenv('SENDMAIL_ARGS_PATH='.$this->argsPath);
     }
 
     protected function tearDown(): void
     {
+        putenv('SENDMAIL_ARGS_PATH');
         if (file_exists($this->argsPath)) {
             @unlink($this->argsPath);
         }

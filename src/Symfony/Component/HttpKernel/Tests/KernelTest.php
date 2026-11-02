@@ -46,7 +46,7 @@ class KernelTest extends TestCase
     protected function tearDown(): void
     {
         try {
-            (new Filesystem())->remove(__DIR__.'/Fixtures/var');
+            (new Filesystem())->remove(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__));
         } catch (IOException $e) {
         }
     }
@@ -100,15 +100,15 @@ class KernelTest extends TestCase
     public function testInitializeContainerClearsOldContainers()
     {
         $fs = new Filesystem();
-        $legacyContainerDir = __DIR__.'/Fixtures/var/cache/custom/ContainerA123456';
+        $kernel = new CustomProjectDirKernel();
+        $legacyContainerDir = $kernel->getCacheDir().'/ContainerA123456';
         $fs->mkdir($legacyContainerDir);
         touch($legacyContainerDir.'.legacy');
 
-        $kernel = new CustomProjectDirKernel();
         $kernel->boot();
 
-        $containerDir = __DIR__.'/Fixtures/var/cache/custom/'.substr($kernel->getContainer()::class, 0, 16);
-        $this->assertTrue(unlink(__DIR__.'/Fixtures/var/cache/custom/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta'));
+        $containerDir = $kernel->getCacheDir().'/'.substr($kernel->getContainer()::class, 0, 16);
+        $this->assertTrue(unlink($kernel->getCacheDir().'/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta'));
         $this->assertFileExists($containerDir);
         $this->assertFileDoesNotExist($containerDir.'.legacy');
 
@@ -125,7 +125,7 @@ class KernelTest extends TestCase
     #[DataProvider('provideFailingContainerBuilds')]
     public function testContainerBuildLockIsReleasedWhenContainerFailsToBuild(\Closure $createKernel, string $exceptionMessage)
     {
-        $cacheDir = __DIR__.'/Fixtures/var/cache/container-build-lock-'.uniqid('', true);
+        $cacheDir = sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__).'/container-build-lock-'.uniqid('', true);
 
         $kernel = $createKernel($cacheDir);
 
@@ -165,7 +165,7 @@ class KernelTest extends TestCase
 
     public function testContainerBuildLockIsHeldWhileDumpingAndReleasedAfterBoot()
     {
-        $kernel = new DumpProbingKernel(__DIR__.'/Fixtures/var/cache/container-build-lock-'.uniqid('', true));
+        $kernel = new DumpProbingKernel(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__).'/container-build-lock-'.uniqid('', true));
         $kernel->boot();
 
         $this->assertTrue($kernel->lockHeldWhileDumping, 'The build lock should be held while the container is dumped.');
@@ -174,8 +174,9 @@ class KernelTest extends TestCase
 
     public function testBootThrowsAgainWhenRebuildingStaleContainerFails()
     {
-        (new CustomProjectDirKernel())->boot();
-        $this->assertTrue(unlink(__DIR__.'/Fixtures/var/cache/custom/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta'));
+        $kernel = new CustomProjectDirKernel();
+        $kernel->boot();
+        $this->assertTrue(unlink($kernel->getCacheDir().'/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta'));
 
         $kernel = new CustomProjectDirKernel(static function () { throw new \RuntimeException('Container build failed'); });
 
@@ -495,7 +496,7 @@ class KernelTest extends TestCase
     public function testProjectDirContainingAPercentSign()
     {
         // two percent signs are required: "%2Fother%" is what the parameter bag reads as a reference
-        $projectDir = sys_get_temp_dir().'/sf_percent_my%2Fother%2Fbranch_'.substr(md5(__METHOD__), 0, 8);
+        $projectDir = sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__).'/my%2Fother%2Fbranch';
         @mkdir($projectDir.'/var/cache/percent', 0o777, true);
         @mkdir($projectDir.'/var/log', 0o777, true);
 
@@ -520,14 +521,14 @@ class KernelTest extends TestCase
 
         $containerClass = $kernel->getContainer()::class;
         $containerFile = (new \ReflectionClass($kernel->getContainer()))->getFileName();
-        unlink(__DIR__.'/Fixtures/var/cache/custom/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta');
+        unlink($kernel->getCacheDir().'/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta');
 
         $kernel = new CustomProjectDirKernel();
         $kernel->boot();
 
         $this->assertInstanceOf($containerClass, $kernel->getContainer());
         $this->assertFileExists($containerFile);
-        unlink(__DIR__.'/Fixtures/var/cache/custom/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta');
+        unlink($kernel->getCacheDir().'/Symfony_Component_HttpKernel_Tests_CustomProjectDirKernelCustomDebugContainer.php.meta');
 
         $kernel = new CustomProjectDirKernel(static function ($container) { $container->register('foo', 'stdClass')->setPublic(true); });
         $kernel->boot();
@@ -686,7 +687,7 @@ class KernelTest extends TestCase
                 ->setPublic(true);
             $container->register('http_cache', HttpCache::class)
                 ->setPublic(true)
-                ->setArguments([new Reference('kernel'), new Definition(Store::class, [__DIR__.'/Fixtures/var/http_cache'])]);
+                ->setArguments([new Reference('kernel'), new Definition(Store::class, ['%kernel.cache_dir%/http_cache'])]);
         }, $httpKernel, 'http_cache_terminate');
 
         $request = Request::create('/page');
@@ -882,6 +883,16 @@ class CustomProjectDirKernel extends Kernel implements WarmableInterface
     public function getProjectDir(): string
     {
         return __DIR__.'/Fixtures';
+    }
+
+    public function getCacheDir(): string
+    {
+        return sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__).'/cache/'.$this->environment;
+    }
+
+    public function getLogDir(): string
+    {
+        return sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__).'/log';
     }
 
     public function warmUp(string $cacheDir, ?string $buildDir = null): array

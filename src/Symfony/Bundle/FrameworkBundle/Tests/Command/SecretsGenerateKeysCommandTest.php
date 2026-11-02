@@ -29,13 +29,13 @@ class SecretsGenerateKeysCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->secretsDir = sys_get_temp_dir().'/sf_secrets/test/';
+        $this->secretsDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/test/';
         (new Filesystem())->remove($this->secretsDir);
     }
 
     protected function tearDown(): void
     {
-        (new Filesystem())->remove($this->secretsDir);
+        (new Filesystem())->remove(\dirname($this->secretsDir));
     }
 
     public function testItGeneratesSodiumKeys()

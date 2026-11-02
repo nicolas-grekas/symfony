@@ -28,7 +28,7 @@ class KernelWithoutBundles extends Kernel
 
     public function getProjectDir(): string
     {
-        return __DIR__;
+        return sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__);
     }
 
     protected function build(ContainerBuilder $container): void

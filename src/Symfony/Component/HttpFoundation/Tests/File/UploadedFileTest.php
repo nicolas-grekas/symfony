@@ -216,8 +216,10 @@ class UploadedFileTest extends TestCase
 
     public function testMoveLocalFileIsAllowedInTestMode()
     {
-        $path = __DIR__.'/Fixtures/test.copy.gif';
-        $targetDir = __DIR__.'/Fixtures/directory';
+        $tmpDir = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
+        @mkdir($tmpDir);
+        $path = $tmpDir.'/test.copy.gif';
+        $targetDir = $tmpDir.'/directory';
         $targetPath = $targetDir.'/test.copy.gif';
         @unlink($path);
         @unlink($targetPath);
@@ -231,7 +233,7 @@ class UploadedFileTest extends TestCase
             true
         );
 
-        $movedFile = $file->move(__DIR__.'/Fixtures/directory');
+        $movedFile = $file->move($targetDir);
 
         $this->assertFileExists($targetPath);
         $this->assertFileDoesNotExist($path);

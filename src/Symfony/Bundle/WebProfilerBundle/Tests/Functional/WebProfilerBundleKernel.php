@@ -69,12 +69,12 @@ class WebProfilerBundleKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return sys_get_temp_dir().'/cache-'.spl_object_id($this);
+        return sys_get_temp_dir().'/sf_web-profiler-bundle_'.hash('xxh32', __FILE__).'/cache-'.spl_object_id($this);
     }
 
     public function getLogDir(): string
     {
-        return sys_get_temp_dir().'/log-'.spl_object_id($this);
+        return sys_get_temp_dir().'/sf_web-profiler-bundle_'.hash('xxh32', __FILE__).'/log-'.spl_object_id($this);
     }
 
     protected function build(ContainerBuilder $container): void

@@ -51,7 +51,7 @@ class FlexStyleMicroKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return $this->cacheDir = sys_get_temp_dir().'/sf_flex_kernel';
+        return $this->cacheDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
     }
 
     public function getLogDir(): string

@@ -26,7 +26,7 @@ class TranslatorCacheTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tmpDir = sys_get_temp_dir().'/sf_translator_cache_test';
+        $this->tmpDir = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__);
         $this->deleteTmpDir();
     }
 

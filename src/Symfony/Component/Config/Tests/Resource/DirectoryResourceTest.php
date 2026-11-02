@@ -20,7 +20,7 @@ class DirectoryResourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir().\DIRECTORY_SEPARATOR.'symfonyDirectoryIterator';
+        $this->directory = sys_get_temp_dir().\DIRECTORY_SEPARATOR.'sf_config_'.hash('xxh32', __FILE__);
         if (!file_exists($this->directory)) {
             mkdir($this->directory);
         }

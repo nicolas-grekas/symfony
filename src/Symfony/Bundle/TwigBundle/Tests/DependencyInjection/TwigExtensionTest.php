@@ -21,13 +21,13 @@ use Symfony\Bundle\TwigBundle\Tests\TestCase;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\ErrorHandler\ErrorRenderer\HtmlErrorRenderer;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Form\FormRenderer;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -549,7 +549,7 @@ class TwigExtensionTest extends TestCase
     public function testDefaultPathContainingAPercentSign()
     {
         // two percent signs are required: "%2Fother%" is what the parameter bag reads as a reference
-        $projectDir = sys_get_temp_dir().'/sf_twig_my%2Fother%2Fbranch_'.substr(md5(__METHOD__), 0, 8);
+        $projectDir = sys_get_temp_dir().'/sf_twig-bundle_'.hash('xxh32', __FILE__).'/my%2Fother%2Fbranch';
         @mkdir($projectDir.'/templates', 0o777, true);
 
         try {
@@ -567,7 +567,7 @@ class TwigExtensionTest extends TestCase
 
             $this->assertContains($projectDir.'/templates', $paths);
         } finally {
-            (new Filesystem())->remove($projectDir);
+            (new Filesystem())->remove(\dirname($projectDir));
         }
     }
 

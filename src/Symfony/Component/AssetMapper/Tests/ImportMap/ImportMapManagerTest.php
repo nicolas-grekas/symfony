@@ -36,12 +36,13 @@ class ImportMapManagerTest extends TestCase
     private RemotePackageDownloader $remotePackageDownloader;
 
     private Filesystem $filesystem;
-    private static string $writableRoot = __DIR__.'/../Fixtures/importmap_manager';
+    private static string $writableRoot;
 
     protected function setUp(): void
     {
+        self::$writableRoot = sys_get_temp_dir().'/sf_asset-mapper_'.hash('xxh32', __FILE__);
         $this->filesystem = new Filesystem();
-        if (!file_exists(__DIR__.'/../Fixtures/importmap_manager/assets')) {
+        if (!file_exists(self::$writableRoot.'/assets')) {
             $this->filesystem->mkdir(self::$writableRoot.'/assets');
         }
     }
@@ -196,7 +197,7 @@ class ImportMapManagerTest extends TestCase
         ];
 
         yield 'single_package_with_a_path' => [
-            'packages' => [new PackageRequireOptions('some/module', path: self::$writableRoot.'/assets/some_file.js')],
+            'packages' => [new PackageRequireOptions('some/module', path: sys_get_temp_dir().'/sf_asset-mapper_'.hash('xxh32', __FILE__).'/assets/some_file.js')],
             'expectedProviderPackageArgumentCount' => 0,
             'resolvedPackages' => [],
             'expectedImportMap' => [

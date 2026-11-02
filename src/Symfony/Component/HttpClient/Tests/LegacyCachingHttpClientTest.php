@@ -37,12 +37,12 @@ class LegacyCachingHttpClientTest extends TestCase
         ];
 
         $mockClient = new MockHttpClient();
-        $store = new Store(sys_get_temp_dir().'/sf_http_cache');
+        $store = new Store(sys_get_temp_dir().'/sf_http-client_'.hash('xxh32', __FILE__));
         $client = new CachingHttpClient($mockClient, $store, $options);
 
         $response = $client->request('GET', 'http://example.com/foo-bar');
 
-        rmdir(sys_get_temp_dir().'/sf_http_cache');
+        rmdir(sys_get_temp_dir().'/sf_http-client_'.hash('xxh32', __FILE__));
         self::assertInstanceOf(MockResponse::class, $response);
         self::assertSame($response->getRequestOptions()['normalized_headers']['application-name'][0], 'Application-Name: test1234');
         self::assertSame($response->getRequestOptions()['normalized_headers']['test-name-header'][0], 'Test-Name-Header: test12345');
@@ -176,7 +176,7 @@ class LegacyCachingHttpClientTest extends TestCase
     {
         $mockClient = new MockHttpClient($mockResponse);
 
-        $store = new Store(sys_get_temp_dir().'/sf_http_cache');
+        $store = new Store(sys_get_temp_dir().'/sf_http-client_'.hash('xxh32', __FILE__));
         $client = new CachingHttpClient($mockClient, $store);
 
         $response = $client->request('GET', 'http://test');

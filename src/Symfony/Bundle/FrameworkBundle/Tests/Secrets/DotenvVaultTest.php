@@ -21,7 +21,7 @@ class DotenvVaultTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->envFile = sys_get_temp_dir().'/sf_secrets.env.test';
+        $this->envFile = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'.env';
         @unlink($this->envFile);
     }
 

@@ -26,8 +26,9 @@ class SecretsDecryptToLocalCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->mainDir = sys_get_temp_dir().'/sf_secrets/main/';
-        $this->localDir = sys_get_temp_dir().'/sf_secrets/local/';
+        $tmpDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+        $this->mainDir = $tmpDir.'/main/';
+        $this->localDir = $tmpDir.'/local/';
 
         $fs = new Filesystem();
         $fs->remove([$this->mainDir, $this->localDir]);
@@ -42,7 +43,7 @@ class SecretsDecryptToLocalCommandTest extends TestCase
 
     protected function tearDown(): void
     {
-        (new Filesystem())->remove([$this->mainDir, $this->localDir]);
+        (new Filesystem())->remove(\dirname($this->mainDir));
     }
 
     public function testSecretsAreDecryptedAndStoredInLocalVault()

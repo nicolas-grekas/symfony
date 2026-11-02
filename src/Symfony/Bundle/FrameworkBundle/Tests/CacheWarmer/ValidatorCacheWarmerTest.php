@@ -45,7 +45,7 @@ class ValidatorCacheWarmerTest extends TestCase
         $validatorBuilder->addMethodMapping('loadValidatorMetadata');
         $validatorBuilder->enableAttributeMapping();
 
-        $file = sys_get_temp_dir().'/cache-validator.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-validator.php';
         @unlink($file);
 
         $warmer = new ValidatorCacheWarmer($validatorBuilder, $file);
@@ -67,10 +67,11 @@ class ValidatorCacheWarmerTest extends TestCase
         $validatorBuilder->addMethodMapping('loadValidatorMetadata');
         $validatorBuilder->enableAttributeMapping();
 
-        $file = sys_get_temp_dir().'/0/cache-validator.php';
+        $tmpDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
+        $file = $tmpDir.'/0/cache-validator.php';
         @unlink($file);
 
-        $cacheDir = sys_get_temp_dir().'/1';
+        $cacheDir = $tmpDir.'/1';
 
         $warmer = new ValidatorCacheWarmer($validatorBuilder, $file);
         $warmer->warmUp($cacheDir, $cacheDir);
@@ -92,7 +93,7 @@ class ValidatorCacheWarmerTest extends TestCase
         $validatorBuilder->addMethodMapping('loadValidatorMetadata');
         $validatorBuilder->enableAttributeMapping();
 
-        $file = sys_get_temp_dir().'/cache-validator.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-validator.php';
         @unlink($file);
 
         $warmer = new ValidatorCacheWarmer($validatorBuilder, $file);
@@ -112,7 +113,7 @@ class ValidatorCacheWarmerTest extends TestCase
         $validatorBuilder->addYamlMapping(__DIR__.'/../Fixtures/Validation/Resources/categories.yml');
         $validatorBuilder->enableAttributeMapping();
 
-        $file = sys_get_temp_dir().'/cache-validator-with-annotations.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-validator-with-annotations.php';
         @unlink($file);
 
         $warmer = new ValidatorCacheWarmer($validatorBuilder, $file);
@@ -132,7 +133,7 @@ class ValidatorCacheWarmerTest extends TestCase
     {
         $validatorBuilder = new ValidatorBuilder();
 
-        $file = sys_get_temp_dir().'/cache-validator-without-loaders.php';
+        $file = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/cache-validator-without-loaders.php';
         @unlink($file);
 
         $warmer = new ValidatorCacheWarmer($validatorBuilder, $file);

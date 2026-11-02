@@ -19,7 +19,7 @@ class FileDumperTest extends TestCase
 {
     public function testDump()
     {
-        $tempDir = sys_get_temp_dir();
+        $tempDir = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__);
 
         $catalogue = new MessageCatalogue('en');
         $catalogue->add(['foo' => 'bar']);
@@ -34,7 +34,7 @@ class FileDumperTest extends TestCase
 
     public function testDumpIntl()
     {
-        $tempDir = sys_get_temp_dir();
+        $tempDir = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__);
 
         $catalogue = new MessageCatalogue('en');
         $catalogue->add(['foo' => 'bar'], 'd1');
@@ -58,7 +58,7 @@ class FileDumperTest extends TestCase
 
     public function testDumpCreatesNestedDirectoriesAndFile()
     {
-        $tempDir = sys_get_temp_dir();
+        $tempDir = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__);
         $translationsDir = $tempDir.'/test/translations';
         $file = $translationsDir.'/messages.en.concrete';
 

@@ -201,7 +201,7 @@ class FileBagTest extends TestCase
 
     protected function createTempFile()
     {
-        $tempFile = tempnam(sys_get_temp_dir().'/form_test', 'FormTest');
+        $tempFile = tempnam(sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__), 'FormTest');
         file_put_contents($tempFile, '1');
 
         return $tempFile;
@@ -209,15 +209,15 @@ class FileBagTest extends TestCase
 
     protected function setUp(): void
     {
-        mkdir(sys_get_temp_dir().'/form_test', 0o777, true);
+        mkdir(sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__), 0o777, true);
     }
 
     protected function tearDown(): void
     {
-        foreach (glob(sys_get_temp_dir().'/form_test/*') as $file) {
+        foreach (glob(sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__).'/*') as $file) {
             @unlink($file);
         }
 
-        @rmdir(sys_get_temp_dir().'/form_test');
+        @rmdir(sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__));
     }
 }

@@ -34,14 +34,14 @@ class StoreTest extends TestCase
         $this->request = Request::create('/');
         $this->response = new Response('hello world', 200, []);
 
-        HttpCacheTestCase::clearDirectory(sys_get_temp_dir().'/http_cache');
+        HttpCacheTestCase::clearDirectory(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__));
 
-        $this->store = new Store(sys_get_temp_dir().'/http_cache');
+        $this->store = new Store(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__));
     }
 
     protected function tearDown(): void
     {
-        HttpCacheTestCase::clearDirectory(sys_get_temp_dir().'/http_cache');
+        HttpCacheTestCase::clearDirectory(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__));
     }
 
     public function testReadsAnEmptyArrayWithReadWhenNothingCachedAtKey()
@@ -54,7 +54,7 @@ class StoreTest extends TestCase
     #[PreserveGlobalState(false)]
     public function testAForkedStoreOnlyCleansUpItsOwnLocks()
     {
-        $observer = new Store(sys_get_temp_dir().'/http_cache');
+        $observer = new Store(sys_get_temp_dir().'/sf_http-kernel_'.hash('xxh32', __FILE__));
         $childRequest = Request::create('/child');
         $this->assertTrue($this->store->lock($this->request));
 

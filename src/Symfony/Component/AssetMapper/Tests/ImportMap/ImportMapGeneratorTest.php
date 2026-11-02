@@ -32,10 +32,11 @@ class ImportMapGeneratorTest extends TestCase
     private ImportMapConfigReader $configReader;
 
     private Filesystem $filesystem;
-    private static string $writableRoot = __DIR__.'/../Fixtures/importmap_generator';
+    private static string $writableRoot;
 
     protected function setUp(): void
     {
+        self::$writableRoot = sys_get_temp_dir().'/sf_asset-mapper_'.hash('xxh32', __FILE__);
         $this->filesystem = new Filesystem();
         if (!file_exists(self::$writableRoot.'/assets')) {
             $this->filesystem->mkdir(self::$writableRoot.'/assets');

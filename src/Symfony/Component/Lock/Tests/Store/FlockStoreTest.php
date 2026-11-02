@@ -56,7 +56,7 @@ class FlockStoreTest extends AbstractStoreTestCase
 
     public function testConstructWithSubdir()
     {
-        new FlockStore($dir = (sys_get_temp_dir().'/sf-flock'));
+        new FlockStore($dir = (sys_get_temp_dir().'/sf_lock_'.hash('xxh32', __FILE__)));
         $this->assertDirectoryExists($dir);
         // cleanup
         @rmdir($dir);

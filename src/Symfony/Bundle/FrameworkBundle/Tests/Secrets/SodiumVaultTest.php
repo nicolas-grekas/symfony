@@ -26,13 +26,13 @@ class SodiumVaultTest extends TestCase
     protected function setUp(): void
     {
         $this->filesystem = new Filesystem();
-        $this->secretsDir = sys_get_temp_dir().'/sf_secrets/test/';
+        $this->secretsDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__).'/test/';
         $this->filesystem->remove($this->secretsDir);
     }
 
     protected function tearDown(): void
     {
-        $this->filesystem->remove($this->secretsDir);
+        $this->filesystem->remove(\dirname($this->secretsDir));
     }
 
     public function testGenerateKeys()

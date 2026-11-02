@@ -21,8 +21,6 @@ use Symfony\Component\HttpKernel\Kernel;
 
 class TestAppKernel extends Kernel
 {
-    private static ?string $projectDir = null;
-
     public function registerBundles(): iterable
     {
         return [
@@ -32,7 +30,7 @@ class TestAppKernel extends Kernel
 
     public function getProjectDir(): string
     {
-        return self::$projectDir ??= sys_get_temp_dir().'/sf_cache_clear_command_'.bin2hex(random_bytes(4));
+        return sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
     }
 
     public function registerContainerConfiguration(LoaderInterface $loader): void

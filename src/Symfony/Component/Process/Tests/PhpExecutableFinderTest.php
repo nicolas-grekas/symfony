@@ -72,7 +72,7 @@ class PhpExecutableFinderTest extends TestCase
         $originalPhpBinary = getenv('PHP_BINARY');
 
         try {
-            $executableDirectoryPath = sys_get_temp_dir().'/PhpExecutableFinderTest_testFindWithExecutableDirectory';
+            $executableDirectoryPath = sys_get_temp_dir().'/sf_process_'.hash('xxh32', __FILE__);
             @mkdir($executableDirectoryPath);
             $this->assertTrue(is_executable($executableDirectoryPath));
             putenv('PHP_BINARY='.$executableDirectoryPath);

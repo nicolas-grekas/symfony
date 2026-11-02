@@ -49,7 +49,7 @@ class ConcreteMicroKernel extends Kernel implements EventSubscriberInterface
 
     public function getCacheDir(): string
     {
-        return $this->cacheDir = sys_get_temp_dir().'/sf_micro_kernel';
+        return $this->cacheDir = sys_get_temp_dir().'/sf_framework-bundle_'.hash('xxh32', __FILE__);
     }
 
     public function getLogDir(): string
