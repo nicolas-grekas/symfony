@@ -231,7 +231,7 @@ class XliffLintCommandTest extends TestCase
             </xliff>
             XLIFF;
 
-        $filename = \sprintf('%s/translation-xliff-lint-test/%s', sys_get_temp_dir(), str_replace('%locale%', 'en', $fileNamePattern));
+        $filename = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__).'/'.str_replace('%locale%', 'en', $fileNamePattern);
         file_put_contents($filename, $xliffContent);
 
         $this->files[] = $filename;
@@ -266,7 +266,7 @@ class XliffLintCommandTest extends TestCase
     protected function setUp(): void
     {
         $this->files = [];
-        @mkdir(sys_get_temp_dir().'/translation-xliff-lint-test');
+        @mkdir(sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__));
     }
 
     protected function tearDown(): void
@@ -276,7 +276,7 @@ class XliffLintCommandTest extends TestCase
                 @unlink($file);
             }
         }
-        @rmdir(sys_get_temp_dir().'/translation-xliff-lint-test');
+        @rmdir(sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__));
     }
 
     public static function provideStrictFilenames()
@@ -320,7 +320,7 @@ class XliffLintCommandTest extends TestCase
             </xliff>
             XML;
 
-        $filename = sys_get_temp_dir().'/translation-xliff-lint-test/messages.en.xlf';
+        $filename = sys_get_temp_dir().'/sf_translation_'.hash('xxh32', __FILE__).'/messages.en.xlf';
         file_put_contents($filename, $xml);
         $this->files[] = $filename;
 
