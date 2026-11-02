@@ -168,7 +168,7 @@ bar';
 
     private function createFile($content): string
     {
-        $filename = tempnam(sys_get_temp_dir().'/framework-yml-lint-test', 'sf-');
+        $filename = tempnam(sys_get_temp_dir().'/sf_yaml_'.hash('xxh32', __FILE__), 'sf-');
         file_put_contents($filename, $content);
 
         $this->files[] = $filename;
@@ -197,7 +197,7 @@ bar';
     protected function setUp(): void
     {
         $this->files = [];
-        @mkdir(sys_get_temp_dir().'/framework-yml-lint-test');
+        @mkdir(sys_get_temp_dir().'/sf_yaml_'.hash('xxh32', __FILE__));
     }
 
     protected function tearDown(): void
@@ -208,7 +208,7 @@ bar';
             }
         }
 
-        @rmdir(sys_get_temp_dir().'/framework-yml-lint-test');
+        @rmdir(sys_get_temp_dir().'/sf_yaml_'.hash('xxh32', __FILE__));
     }
 }
 
