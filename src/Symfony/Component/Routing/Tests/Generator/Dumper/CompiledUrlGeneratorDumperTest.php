@@ -33,8 +33,10 @@ class CompiledUrlGeneratorDumperTest extends TestCase
     {
         $this->routeCollection = new RouteCollection();
         $this->generatorDumper = new CompiledUrlGeneratorDumper($this->routeCollection);
-        $this->testTmpFilepath = sys_get_temp_dir().'/php_generator.php';
-        $this->largeTestTmpFilepath = sys_get_temp_dir().'/php_generator.large.php';
+        $tmpDir = sys_get_temp_dir().'/sf_routing_'.hash('xxh32', __FILE__);
+        @mkdir($tmpDir);
+        $this->testTmpFilepath = $tmpDir.'/php_generator.php';
+        $this->largeTestTmpFilepath = $tmpDir.'/php_generator.large.php';
         @unlink($this->testTmpFilepath);
         @unlink($this->largeTestTmpFilepath);
     }
@@ -43,6 +45,7 @@ class CompiledUrlGeneratorDumperTest extends TestCase
     {
         @unlink($this->testTmpFilepath);
         @unlink($this->largeTestTmpFilepath);
+        @rmdir(\dirname($this->testTmpFilepath));
     }
 
     public function testDumpWithRoutes()
