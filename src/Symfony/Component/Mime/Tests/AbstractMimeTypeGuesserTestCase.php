@@ -18,7 +18,7 @@ abstract class AbstractMimeTypeGuesserTestCase extends TestCase
 {
     public static function tearDownAfterClass(): void
     {
-        $path = __DIR__.'/Fixtures/mimetypes/to_delete';
+        $path = sys_get_temp_dir().'/sf_mime_'.hash('xxh32', __FILE__);
         if (file_exists($path)) {
             @chmod($path, 0o666);
             @unlink($path);
@@ -112,7 +112,7 @@ abstract class AbstractMimeTypeGuesserTestCase extends TestCase
             $this->markTestSkipped('This test will fail if run under superuser');
         }
 
-        $path = __DIR__.'/Fixtures/mimetypes/to_delete';
+        $path = sys_get_temp_dir().'/sf_mime_'.hash('xxh32', __FILE__);
         touch($path);
         @chmod($path, 0o333);
 
