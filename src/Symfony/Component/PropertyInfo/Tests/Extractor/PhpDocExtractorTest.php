@@ -27,6 +27,7 @@ use Symfony\Component\PropertyInfo\Tests\Fixtures\Dummy;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyCollection;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyGeneric;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyIntersectionType;
+use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyNestedUnionType;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildOfParentUsingTrait;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildOfParentWithPromotedSelfDocBlock;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildWithConstructorOverride;
@@ -1111,6 +1112,15 @@ class PhpDocExtractorTest extends TestCase
         $this->assertNull($this->extractor->getType(DummyIntersectionType::class, 'orNull'));
         $this->assertNull($this->extractor->getType(DummyIntersectionType::class, 'orString'));
         $this->assertEquals(Type::array(), $this->extractor->getType(DummyIntersectionType::class, 'collection'));
+    }
+
+    public function testNestedUnionTypesAreFlattened()
+    {
+        $this->assertEquals(Type::nullable(Type::union(Type::int(), Type::string())), $this->extractor->getType(DummyNestedUnionType::class, 'orNull'));
+        $this->assertEquals(Type::nullable(Type::union(Type::int(), Type::string())), $this->extractor->getType(DummyNestedUnionType::class, 'nullable'));
+        $this->assertEquals(Type::nullable(Type::union(Type::int(), Type::string(), Type::bool())), $this->extractor->getType(DummyNestedUnionType::class, 'deep'));
+        $this->assertEquals(Type::array(Type::union(Type::int(), Type::string())), $this->extractor->getType(DummyNestedUnionType::class, 'collection'));
+        $this->assertNull($this->extractor->getType(DummyNestedUnionType::class, 'intersection'));
     }
 
     #[DataProvider('constructorTypesProvider')]
