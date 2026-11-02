@@ -74,7 +74,7 @@ final class PhpDocTypeHelper
             ];
         }
 
-        if (!$varType instanceof Compound) {
+        if (!$varType instanceof Compound && !$varType instanceof Expression) {
             if ($varType instanceof Null_) {
                 $nullable = true;
             }
@@ -88,9 +88,7 @@ final class PhpDocTypeHelper
         }
 
         $varTypes = [];
-        for ($typeIndex = 0; $varType->has($typeIndex); ++$typeIndex) {
-            $type = $varType->get($typeIndex);
-
+        foreach ($this->flattenUnion($varType) as $type) {
             if ($type instanceof Mixed_) {
                 return [];
             }
@@ -104,11 +102,6 @@ final class PhpDocTypeHelper
             if ($type instanceof Null_) {
                 $nullable = true;
                 continue;
-            }
-
-            if ($type instanceof Nullable) {
-                $nullable = true;
-                $type = $type->getActualType();
             }
 
             if ($this->isIntersection($type)) {
@@ -235,5 +228,26 @@ final class PhpDocTypeHelper
     private function isIntersection(DocType $type): bool
     {
         return $type instanceof Intersection || ($type instanceof Expression && $type->getValueType() instanceof Intersection);
+    }
+
+    /**
+     * Flattens parenthesized and nested union types, e.g. "(int|string)|null" into int, string and null.
+     *
+     * @return iterable<DocType>
+     */
+    private function flattenUnion(DocType $type): iterable
+    {
+        if ($type instanceof Expression) {
+            yield from $this->flattenUnion($type->getValueType());
+        } elseif ($type instanceof Nullable) {
+            yield new Null_();
+            yield from $this->flattenUnion($type->getActualType());
+        } elseif ($type instanceof Compound) {
+            foreach ($type as $innerType) {
+                yield from $this->flattenUnion($innerType);
+            }
+        } else {
+            yield $type;
+        }
     }
 }

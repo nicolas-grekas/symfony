@@ -18,6 +18,7 @@ use Symfony\Component\PropertyInfo\Extractor\PhpDocExtractor;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Dummy;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyCollection;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyIntersectionType;
+use Symfony\Component\PropertyInfo\Tests\Fixtures\DummyNestedUnionType;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildOfParentUsingTrait;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildOfParentWithPromotedSelfDocBlock;
 use Symfony\Component\PropertyInfo\Tests\Fixtures\Extractor\ChildWithConstructorOverride;
@@ -454,6 +455,15 @@ class PhpDocExtractorTest extends TestCase
         $this->assertNull($this->extractor->getTypes(DummyIntersectionType::class, 'orNull'));
         $this->assertNull($this->extractor->getTypes(DummyIntersectionType::class, 'orString'));
         $this->assertEquals([new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true)], $this->extractor->getTypes(DummyIntersectionType::class, 'collection'));
+    }
+
+    public function testNestedUnionTypesAreFlattened()
+    {
+        $this->assertEquals([new Type(Type::BUILTIN_TYPE_INT, true), new Type(Type::BUILTIN_TYPE_STRING, true)], $this->extractor->getTypes(DummyNestedUnionType::class, 'orNull'));
+        $this->assertEquals([new Type(Type::BUILTIN_TYPE_INT, true), new Type(Type::BUILTIN_TYPE_STRING, true)], $this->extractor->getTypes(DummyNestedUnionType::class, 'nullable'));
+        $this->assertEquals([new Type(Type::BUILTIN_TYPE_INT, true), new Type(Type::BUILTIN_TYPE_STRING, true), new Type(Type::BUILTIN_TYPE_BOOL, true)], $this->extractor->getTypes(DummyNestedUnionType::class, 'deep'));
+        $this->assertEquals([new Type(Type::BUILTIN_TYPE_ARRAY, false, null, true, null, [new Type(Type::BUILTIN_TYPE_INT), new Type(Type::BUILTIN_TYPE_STRING)])], $this->extractor->getTypes(DummyNestedUnionType::class, 'collection'));
+        $this->assertNull($this->extractor->getTypes(DummyNestedUnionType::class, 'intersection'));
     }
 
     /**
