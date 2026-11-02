@@ -15,10 +15,18 @@ use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Kernel;
 
 class ImportMapTestAppKernel extends Kernel
 {
+    public function __construct(string $environment, bool $debug)
+    {
+        parent::__construct($environment, $debug);
+
+        (new Filesystem())->mirror(__DIR__, $this->getProjectDir());
+    }
+
     public function registerBundles(): iterable
     {
         return [
@@ -28,7 +36,7 @@ class ImportMapTestAppKernel extends Kernel
 
     public function getProjectDir(): string
     {
-        return __DIR__;
+        return sys_get_temp_dir().'/sf_asset-mapper_'.hash('xxh32', __FILE__);
     }
 
     public function registerContainerConfiguration(LoaderInterface $loader): void

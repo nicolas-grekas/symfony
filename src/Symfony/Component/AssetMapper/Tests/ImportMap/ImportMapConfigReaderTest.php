@@ -25,22 +25,26 @@ use Symfony\Component\Filesystem\Filesystem;
 class ImportMapConfigReaderTest extends TestCase
 {
     private Filesystem $filesystem;
+    private string $writableRoot;
 
     protected function setUp(): void
     {
+        $this->writableRoot = sys_get_temp_dir().'/sf_asset-mapper_'.hash('xxh32', __FILE__);
         $this->filesystem = new Filesystem();
-        if (!file_exists(__DIR__.'/../Fixtures/importmap_config_reader/assets')) {
-            $this->filesystem->mkdir(__DIR__.'/../Fixtures/importmap_config_reader/assets');
+        if (!file_exists($this->writableRoot.'/assets')) {
+            $this->filesystem->mkdir($this->writableRoot.'/assets');
         }
     }
 
     protected function tearDown(): void
     {
-        $this->filesystem->remove(__DIR__.'/../Fixtures/importmap_config_reader');
+        $this->filesystem->remove($this->writableRoot);
     }
 
     public function testGetEntriesAndWriteEntries()
     {
+        $importMapPath = $this->writableRoot.'/importmap.php';
+
         $importMap = <<<EOF
             <?php
             return [
@@ -63,14 +67,14 @@ class ImportMapConfigReaderTest extends TestCase
                 ],
             ];
             EOF;
-        file_put_contents(__DIR__.'/../Fixtures/importmap_config_reader/importmap.php', $importMap);
+        file_put_contents($importMapPath, $importMap);
 
         $remotePackageStorage = $this->createStub(RemotePackageStorage::class);
         $remotePackageStorage
             ->method('getDownloadPath')
             ->willReturnCallback(static fn (string $packageModuleSpecifier, ImportMapType $type) => '/path/to/vendor/'.$packageModuleSpecifier.'.'.$type->value);
         $reader = new ImportMapConfigReader(
-            __DIR__.'/../Fixtures/importmap_config_reader/importmap.php',
+            $importMapPath,
             $remotePackageStorage,
         );
         $entries = $reader->getEntries();
@@ -98,11 +102,11 @@ class ImportMapConfigReaderTest extends TestCase
         $this->assertSame('package/with_file.js', $packageWithFileEntry->packageModuleSpecifier);
 
         // now save the original raw data from importmap.php and delete the file
-        $originalImportMapData = (static fn () => eval('?>'.file_get_contents(__DIR__.'/../Fixtures/importmap_config_reader/importmap.php')))();
-        unlink(__DIR__.'/../Fixtures/importmap_config_reader/importmap.php');
+        $originalImportMapData = (static fn () => eval('?>'.file_get_contents($importMapPath)))();
+        unlink($importMapPath);
         // dump the entries back to the file
         $reader->writeEntries($entries);
-        $newImportMapData = (static fn () => eval('?>'.file_get_contents(__DIR__.'/../Fixtures/importmap_config_reader/importmap.php')))();
+        $newImportMapData = (static fn () => eval('?>'.file_get_contents($importMapPath)))();
 
         $this->assertSame($originalImportMapData, $newImportMapData);
     }
