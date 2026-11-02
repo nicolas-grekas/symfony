@@ -58,7 +58,7 @@ class JsonStreamWriterTest extends TestCase
     {
         parent::setUp();
 
-        $this->streamWritersDir = \sprintf('%s/symfony_json_streamer_test/stream_writer', sys_get_temp_dir());
+        $this->streamWritersDir = sys_get_temp_dir().'/sf_json-streamer_'.hash('xxh32', __FILE__).'/stream_writer';
 
         if (is_dir($this->streamWritersDir)) {
             array_map('unlink', glob($this->streamWritersDir.'/*'));
