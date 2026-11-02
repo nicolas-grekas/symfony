@@ -165,6 +165,9 @@ class ExecutableFinderTest extends TestCase
     public function testEmptyDirInPath()
     {
         putenv(\sprintf('PATH=%s%s', \dirname(\PHP_BINARY), \PATH_SEPARATOR));
+        $dir = sys_get_temp_dir().'/sf_process_'.hash('xxh32', __FILE__);
+        @mkdir($dir);
+        chdir($dir);
 
         try {
             touch('executable');
