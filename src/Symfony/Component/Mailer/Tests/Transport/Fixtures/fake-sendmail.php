@@ -1,5 +1,5 @@
 #!/usr/bin/env php
 <?php
-$argsPath = sys_get_temp_dir().\DIRECTORY_SEPARATOR.'sendmail_args';
+$argsPath = getenv('SENDMAIL_ARGS_PATH');
 
 file_put_contents($argsPath, implode(' ', $argv));
