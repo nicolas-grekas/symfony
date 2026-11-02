@@ -40,7 +40,7 @@ class SessionHandlerFactoryTest extends TestCase
 
     public static function provideConnectionDSN(): array
     {
-        $base = sys_get_temp_dir();
+        $base = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
 
         return [
             'native file handler using save_path from php.ini' => ['connectionDSN' => 'file://', 'expectedPath' => \ini_get('session.save_path'), 'expectedHandlerType' => StrictSessionHandler::class],

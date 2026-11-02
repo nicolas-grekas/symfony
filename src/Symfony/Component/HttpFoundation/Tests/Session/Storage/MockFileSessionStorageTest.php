@@ -29,7 +29,7 @@ class MockFileSessionStorageTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->sessionDir = sys_get_temp_dir().'/sftest';
+        $this->sessionDir = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
         $this->storage = $this->getStorage();
     }
 

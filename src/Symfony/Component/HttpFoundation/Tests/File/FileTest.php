@@ -20,6 +20,14 @@ use Symfony\Component\HttpFoundation\File\File;
 #[RequiresPhpExtension('fileinfo')]
 class FileTest extends TestCase
 {
+    private string $tmpDir;
+
+    protected function setUp(): void
+    {
+        $this->tmpDir = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
+        @mkdir($this->tmpDir);
+    }
+
     public function testGetMimeTypeUsesMimeTypeGuessers()
     {
         $file = new File(__DIR__.'/Fixtures/test.gif');
@@ -47,8 +55,8 @@ class FileTest extends TestCase
 
     public function testMove()
     {
-        $path = __DIR__.'/Fixtures/test.copy.gif';
-        $targetDir = __DIR__.'/Fixtures/directory';
+        $path = $this->tmpDir.'/test.copy.gif';
+        $targetDir = $this->tmpDir.'/directory';
         $targetPath = $targetDir.'/test.copy.gif';
         @unlink($path);
         @unlink($targetPath);
@@ -67,8 +75,8 @@ class FileTest extends TestCase
 
     public function testMoveWithNewName()
     {
-        $path = __DIR__.'/Fixtures/test.copy.gif';
-        $targetDir = __DIR__.'/Fixtures/directory';
+        $path = $this->tmpDir.'/test.copy.gif';
+        $targetDir = $this->tmpDir.'/directory';
         $targetPath = $targetDir.'/test.newname.gif';
         @unlink($path);
         @unlink($targetPath);
@@ -106,8 +114,8 @@ class FileTest extends TestCase
     #[DataProvider('getFilenameFixtures')]
     public function testMoveWithNonLatinName($filename, $sanitizedFilename)
     {
-        $path = __DIR__.'/Fixtures/'.$sanitizedFilename;
-        $targetDir = __DIR__.'/Fixtures/directory/';
+        $path = $this->tmpDir.'/'.$sanitizedFilename;
+        $targetDir = $this->tmpDir.'/directory/';
         $targetPath = $targetDir.$sanitizedFilename;
         @unlink($path);
         @unlink($targetPath);
@@ -126,8 +134,8 @@ class FileTest extends TestCase
 
     public function testMoveToAnUnexistentDirectory()
     {
-        $sourcePath = __DIR__.'/Fixtures/test.copy.gif';
-        $targetDir = __DIR__.'/Fixtures/directory/sub';
+        $sourcePath = $this->tmpDir.'/test.copy.gif';
+        $targetDir = $this->tmpDir.'/directory/sub';
         $targetPath = $targetDir.'/test.copy.gif';
         @unlink($sourcePath);
         @unlink($targetPath);

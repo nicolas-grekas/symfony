@@ -398,7 +398,7 @@ class BinaryFileResponseTest extends ResponseTestCase
     {
         $request = Request::create('/');
 
-        $path = __DIR__.'/File/Fixtures/to_delete';
+        $path = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
         touch($path);
         $realPath = realpath($path);
         $this->assertFileExists($realPath);
@@ -523,7 +523,7 @@ class BinaryFileResponseTest extends ResponseTestCase
 
     public static function tearDownAfterClass(): void
     {
-        $path = __DIR__.'/../Fixtures/to_delete';
+        $path = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
         if (file_exists($path)) {
             @unlink($path);
         }

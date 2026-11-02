@@ -49,12 +49,12 @@ class NativeFileSessionHandlerTest extends TestCase
 
     public static function savePathDataProvider()
     {
-        $base = sys_get_temp_dir();
+        $dir = sys_get_temp_dir().'/sf_http-foundation_'.hash('xxh32', __FILE__);
 
         return [
-            ["$base/foo", "$base/foo", "$base/foo"],
-            ["5;$base/foo", "5;$base/foo", "$base/foo"],
-            ["5;0600;$base/foo", "5;0600;$base/foo", "$base/foo"],
+            [$dir, $dir, $dir],
+            ["5;$dir", "5;$dir", $dir],
+            ["5;0600;$dir", "5;0600;$dir", $dir],
         ];
     }
 
