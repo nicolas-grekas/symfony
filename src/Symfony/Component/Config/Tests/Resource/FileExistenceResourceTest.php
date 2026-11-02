@@ -22,7 +22,7 @@ class FileExistenceResourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->file = realpath(sys_get_temp_dir()).'/tmp.xml';
+        $this->file = realpath(sys_get_temp_dir()).'/sf_config_'.hash('xxh32', __FILE__).'.xml';
         $this->time = time();
         $this->resource = new FileExistenceResource($this->file);
     }

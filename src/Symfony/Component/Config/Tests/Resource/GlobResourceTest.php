@@ -14,16 +14,21 @@ namespace Symfony\Component\Config\Tests\Resource;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Resource\GlobResource;
+use Symfony\Component\Filesystem\Filesystem;
 
 class GlobResourceTest extends TestCase
 {
+    private string $workspace;
+
+    protected function setUp(): void
+    {
+        $this->workspace = sys_get_temp_dir().'/sf_config_'.hash('xxh32', __FILE__);
+        (new Filesystem())->mirror(\dirname(__DIR__).'/Fixtures/Resource', $this->workspace.'/Resource');
+    }
+
     protected function tearDown(): void
     {
-        $dir = \dirname(__DIR__).'/Fixtures';
-        @rmdir($dir.'/TmpGlob');
-        @unlink($dir.'/TmpGlob');
-        @unlink($dir.'/Resource/TmpGlob');
-        touch($dir.'/Resource/.hiddenFile');
+        (new Filesystem())->remove($this->workspace);
     }
 
     #[TestWith(['/Resource'])]
@@ -98,7 +103,7 @@ class GlobResourceTest extends TestCase
 
     public function testIsFreshNonRecursiveDetectsNewFile()
     {
-        $dir = \dirname(__DIR__).'/Fixtures';
+        $dir = $this->workspace;
         $resource = new GlobResource($dir, '/*', false);
 
         $this->assertTrue($resource->isFresh(0));
@@ -118,7 +123,7 @@ class GlobResourceTest extends TestCase
 
     public function testIsFreshNonRecursiveDetectsRemovedFile()
     {
-        $dir = \dirname(__DIR__).'/Fixtures';
+        $dir = $this->workspace;
         $resource = new GlobResource($dir, '/*', false);
 
         touch($dir.'/TmpGlob');
@@ -134,7 +139,7 @@ class GlobResourceTest extends TestCase
 
     public function testIsFreshRecursiveDetectsRemovedFile()
     {
-        $dir = \dirname(__DIR__).'/Fixtures';
+        $dir = $this->workspace;
         $resource = new GlobResource($dir, '/*', true);
 
         touch($dir.'/Resource/TmpGlob');
@@ -152,7 +157,7 @@ class GlobResourceTest extends TestCase
 
     public function testIsFreshRecursiveDetectsNewFile()
     {
-        $dir = \dirname(__DIR__).'/Fixtures';
+        $dir = $this->workspace;
         $resource = new GlobResource($dir, '/*', true);
 
         $this->assertTrue($resource->isFresh(0));

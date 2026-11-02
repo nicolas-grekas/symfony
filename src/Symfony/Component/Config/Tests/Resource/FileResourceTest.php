@@ -22,7 +22,7 @@ class FileResourceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->file = sys_get_temp_dir().'/tmp.xml';
+        $this->file = sys_get_temp_dir().'/sf_config_'.hash('xxh32', __FILE__).'.xml';
         $this->time = time();
         touch($this->file, $this->time);
         $this->resource = new FileResource($this->file);
