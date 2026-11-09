@@ -886,7 +886,7 @@ class HtmlDumper extends CliDumper
             $dumpClasses[] = 'sf-dump-ellipsization';
             $ellipsisClass = 'sf-dump-ellipsis';
             if (isset($attr['ellipsis-type'])) {
-                $ellipsisClass .= ' sf-dump-ellipsis-'.$attr['ellipsis-type'];
+                $ellipsisClass .= ' sf-dump-ellipsis-'.esc($attr['ellipsis-type']);
             }
             $label = esc(substr($value, -$attr['ellipsis']));
             $dumpTitle = $v."\n".$dumpTitle;
