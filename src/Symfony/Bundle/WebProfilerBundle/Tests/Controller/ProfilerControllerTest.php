@@ -123,6 +123,26 @@ class ProfilerControllerTest extends WebTestCase
         $this->assertSame('_', $crawler->filter('.metrics .metric .value')->eq(0)->text());
     }
 
+    #[DataProvider('provideRefererLinks')]
+    public function testPanelActionLinksToHttpRefererOnly(string $referer, bool $isLinked)
+    {
+        $kernel = new WebProfilerBundleKernel();
+        $client = new KernelBrowser($kernel);
+
+        $client->request('POST', '/', [], [], ['HTTP_REFERER' => $referer]);
+        $crawler = $client->request('GET', '/_profiler/latest');
+
+        $this->assertCount($isLinked ? 1 : 0, $crawler->filter('a.referer'));
+    }
+
+    public static function provideRefererLinks(): iterable
+    {
+        yield ['http://localhost/form', true];
+        yield ['HTTPS://localhost/form', true];
+        yield ['javascript:alert(1)', false];
+        yield [' javascript:alert(1)', false];
+    }
+
     #[DataProvider('provideDumpNonceRendering')]
     public function testStoredDumpsUseTheCurrentResponseNonces(bool $toolbar, bool $withCsp)
     {

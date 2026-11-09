@@ -14,7 +14,24 @@
         finish: function() {}
     };
 
+    var parseUrl = function(url) {
+        var a = document.createElement('a');
+        a.href = url;
+
+        return a;
+    };
+
+    var isSameOrigin = function(url) {
+        url = parseUrl(url);
+
+        return url.protocol === location.protocol && url.host === location.host;
+    };
+
     var extractHeaders = function(xhr, stackElement) {
+        if (!isSameOrigin(xhr.responseURL || stackElement.url)) {
+            return;
+        }
+
         /* Read all headers to avoid CORS warnings for headers that aren't exposed. */
         var allHeaders = xhr.getAllResponseHeaders();
         var ret;
@@ -68,10 +85,12 @@
                     stackElement.duration = new Date() - stackElement.start;
                     stackElement.error = r.status < 200 || r.status >= 400;
                     stackElement.statusCode = r.status;
-                    stackElement.profile = r.headers.get('x-debug-token');
-                    stackElement.profilerUrl = r.headers.get('x-debug-token-link');
-                    stackElement.toolbarReplaceFinished = false;
-                    stackElement.toolbarReplace = '1' === r.headers.get('Symfony-Debug-Toolbar-Replace');
+                    if (isSameOrigin(r.url || url)) {
+                        stackElement.profile = r.headers.get('x-debug-token');
+                        stackElement.profilerUrl = r.headers.get('x-debug-token-link');
+                        stackElement.toolbarReplaceFinished = false;
+                        stackElement.toolbarReplace = '1' === r.headers.get('Symfony-Debug-Toolbar-Replace');
+                    }
                     ajaxStack.finish(stackElement);
                 }, function (e){
                     stackElement.error = true;
