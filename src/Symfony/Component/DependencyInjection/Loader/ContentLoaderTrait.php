@@ -40,6 +40,8 @@ trait ContentLoaderTrait
 {
     private const SERVICE_KEYWORDS = [
         'alias' => 'alias',
+        'exposed' => 'exposed',
+        'allowed_domains' => 'allowed_domains',
         'parent' => 'parent',
         'class' => 'class',
         'shared' => 'shared',
@@ -393,6 +395,12 @@ trait ContentLoaderTrait
 
         if (isset($service['alias'])) {
             $alias = new Alias($service['alias']);
+            if (\array_key_exists('exposed', $service)) {
+                $alias->setExposed($service['exposed']);
+            }
+            if (isset($service['allowed_domains'])) {
+                $alias->setAllowedDomains($service['allowed_domains']);
+            }
 
             if (isset($service['public'])) {
                 $alias->setPublic($service['public']);
@@ -401,8 +409,8 @@ trait ContentLoaderTrait
             }
 
             foreach ($service as $key => $value) {
-                if (!\in_array($key, ['alias', 'public', 'deprecated'], true)) {
-                    throw new InvalidArgumentException(\sprintf('The configuration key "%s" is unsupported for the service "%s" which is defined as an alias in "%s". Allowed configuration keys for service aliases are "alias", "public" and "deprecated".', $key, $id, $file));
+                if (!\in_array($key, ['alias', 'public', 'deprecated', 'exposed', 'allowed_domains'], true)) {
+                    throw new InvalidArgumentException(\sprintf('The configuration key "%s" is unsupported for the service "%s" which is defined as an alias in "%s". Allowed configuration keys for service aliases are "alias", "public", "deprecated", "exposed" and "allowed_domains".', $key, $id, $file));
                 }
 
                 if ('deprecated' === $key) {
@@ -421,6 +429,10 @@ trait ContentLoaderTrait
             }
 
             return $return ? $alias : $this->container->setAlias($id, $alias);
+        }
+
+        if (\array_key_exists('exposed', $service) || \array_key_exists('allowed_domains', $service)) {
+            throw new InvalidArgumentException(\sprintf('The "exposed" and "allowed_domains" options can only be used on aliases in "%s". Use the "container.domain" and "container.exposed_to" tags on service definitions.', $file));
         }
 
         $changes = [];
@@ -772,6 +784,14 @@ trait ContentLoaderTrait
     {
         if ($value instanceof TaggedValue) {
             $argument = $value->getValue();
+
+            if ('reference' === $value->getTag()) {
+                if (!\is_array($argument) || !\is_string($argument['service'] ?? null) || '' === $argument['service'] || array_diff(array_keys($argument), ['service', 'allow_domain']) || isset($argument['allow_domain']) && (!\is_string($argument['allow_domain']) || '' === $argument['allow_domain'])) {
+                    throw new InvalidArgumentException(\sprintf('The "!reference" tag requires a service id and an optional "allow_domain" string in "%s".', $file));
+                }
+
+                return new Reference($argument['service'], ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, $argument['allow_domain'] ?? null);
+            }
 
             if ('closure' === $value->getTag()) {
                 $argument = $this->resolveServices($argument, $file, $isParameter);

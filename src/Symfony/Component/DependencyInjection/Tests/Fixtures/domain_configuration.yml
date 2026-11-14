@@ -1,0 +1,24 @@
+services:
+    internal:
+        class: stdClass
+        tags:
+            - { name: container.domain, domain: billing }
+
+    api:
+        alias: internal
+        exposed: true
+        allowed_domains: [migrations]
+
+    application:
+        class: ArrayObject
+        public: true
+        arguments:
+            - [!reference { service: internal, allow_domain: billing }]
+
+    migration:
+        class: ArrayObject
+        public: true
+        tags:
+            - { name: container.domain, domain: migrations, restricted: true }
+        arguments:
+            - ['@api']

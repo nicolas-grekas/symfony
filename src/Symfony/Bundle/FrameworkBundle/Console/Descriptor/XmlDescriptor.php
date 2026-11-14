@@ -67,7 +67,11 @@ class XmlDescriptor extends Descriptor
 
     protected function describeContainerServices(ContainerBuilder $container, array $options = []): void
     {
-        $this->writeDocument($this->getContainerServicesDocument($container, $options['tag'] ?? null, isset($options['show_hidden']) && $options['show_hidden'], $options['filter'] ?? null));
+        $dom = $this->getContainerServicesDocument($container, $options['tag'] ?? null, isset($options['show_hidden']) && $options['show_hidden'], $options['filter'] ?? null);
+        if (isset($options['domain'])) {
+            $this->appendDomainReferences($dom->documentElement, $this->getContainerDomainReferences($container, $options['domain']));
+        }
+        $this->writeDocument($dom);
     }
 
     protected function describeContainerDefinition(Definition $definition, array $options = [], ?ContainerBuilder $container = null): void
@@ -78,7 +82,7 @@ class XmlDescriptor extends Descriptor
     protected function describeContainerAlias(Alias $alias, array $options = [], ?ContainerBuilder $container = null): void
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
-        $dom->appendChild($dom->importNode($this->getContainerAliasDocument($alias, $options['id'] ?? null)->childNodes->item(0), true));
+        $dom->appendChild($dom->importNode($this->getContainerAliasDocument($alias, $options['id'] ?? null, $container)->childNodes->item(0), true));
         if ($container) {
             $dom->appendChild($dom->importNode($this->getContainerDefinitionDocument($container->getDefinition((string) $alias), (string) $alias, false, $container)->childNodes->item(0), true));
         }
@@ -271,7 +275,7 @@ class XmlDescriptor extends Descriptor
         $dom = new \DOMDocument('1.0', 'UTF-8');
 
         if ($service instanceof Alias) {
-            $dom->appendChild($dom->importNode($this->getContainerAliasDocument($service, $id)->childNodes->item(0), true));
+            $dom->appendChild($dom->importNode($this->getContainerAliasDocument($service, $id, $container)->childNodes->item(0), true));
             if ($container) {
                 $dom->appendChild($dom->importNode($this->getContainerDefinitionDocument($container->getDefinition((string) $service), (string) $service, false, $container)->childNodes->item(0), true));
             }
@@ -312,7 +316,9 @@ class XmlDescriptor extends Descriptor
                 continue;
             }
 
-            $serviceXML = $this->getContainerServiceDocument($service, $serviceId, $service instanceof Definition ? $container : null);
+            $serviceXML = $service instanceof Alias
+                ? $this->getContainerAliasDocument($service, $serviceId, $container)
+                : $this->getContainerServiceDocument($service, $serviceId, $container);
             $containerXML->appendChild($containerXML->ownerDocument->importNode($serviceXML->childNodes->item(0), true));
         }
 
@@ -334,6 +340,10 @@ class XmlDescriptor extends Descriptor
         }
 
         $serviceXML->setAttribute('class', $definition->getClass() ?? '');
+        $this->appendDomainData($serviceXML, $this->getContainerDomainData($container, $id));
+        if (null !== $container && null !== $id) {
+            $this->appendDomainReferences($serviceXML, $this->getContainerDomainReferences($container, null, $id));
+        }
 
         if ($factory = $definition->getFactory()) {
             $serviceXML->appendChild($factoryXML = $dom->createElement('factory'));
@@ -503,7 +513,7 @@ class XmlDescriptor extends Descriptor
         return $nodes;
     }
 
-    private function getContainerAliasDocument(Alias $alias, ?string $id = null): \DOMDocument
+    private function getContainerAliasDocument(Alias $alias, ?string $id = null, ?ContainerBuilder $container = null): \DOMDocument
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->appendChild($aliasXML = $dom->createElement('alias'));
@@ -514,8 +524,45 @@ class XmlDescriptor extends Descriptor
 
         $aliasXML->setAttribute('service', (string) $alias);
         $aliasXML->setAttribute('public', $alias->isPublic() ? 'true' : 'false');
+        $this->appendDomainData($aliasXML, $this->getContainerDomainData($container, $id));
 
         return $dom;
+    }
+
+    private function appendDomainData(\DOMElement $element, array $data): void
+    {
+        if (!$data) {
+            return;
+        }
+        $element->setAttribute('exposed', $data['exposed'] ? 'true' : 'false');
+        foreach ($data['domains'] as $domain) {
+            $element->appendChild($child = $element->ownerDocument->createElement('domain'));
+            $child->setAttribute('name', $domain);
+            $child->setAttribute('restricted', \in_array($domain, $data['restricted_domains'], true) ? 'true' : 'false');
+        }
+        foreach ($data['allowed_domains'] as $domain) {
+            $element->appendChild($child = $element->ownerDocument->createElement('exposed-to'));
+            $child->setAttribute('domain', $domain);
+        }
+    }
+
+    private function appendDomainReferences(\DOMElement $element, array $references): void
+    {
+        if (!$references) {
+            return;
+        }
+        $element->appendChild($list = $element->ownerDocument->createElement('domain-references'));
+        foreach ($references as $source => $targets) {
+            foreach ($targets as $reference) {
+                $list->appendChild($child = $element->ownerDocument->createElement('reference'));
+                $child->setAttribute('consumer', $source);
+                $child->setAttribute('service', $reference['service']);
+                $child->setAttribute('access', $reference['access']);
+                if (null !== $reference['allow_domain']) {
+                    $child->setAttribute('allow-domain', $reference['allow_domain']);
+                }
+            }
+        }
     }
 
     private function getContainerParameterDocument(mixed $parameter, ?array $deprecation, array $options = []): \DOMDocument

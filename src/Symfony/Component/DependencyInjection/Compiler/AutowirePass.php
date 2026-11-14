@@ -132,8 +132,8 @@ class AutowirePass extends AbstractRecursivePass
 
                 $invalidBehavior = ContainerBuilder::EXCEPTION_ON_INVALID_REFERENCE !== $v->getInvalidBehavior() ? $v->getInvalidBehavior() : $value->getInvalidBehavior();
                 $value = $v instanceof TypedReference
-                    ? new TypedReference($v, $v->getType(), $invalidBehavior, $v->getName() ?? $value->getName(), array_merge($v->getAttributes(), $value->getAttributes()))
-                    : new TypedReference($v, $value->getType(), $invalidBehavior, $value->getName(), $value->getAttributes());
+                    ? new TypedReference($v, $v->getType(), $invalidBehavior, $v->getName() ?? $value->getName(), array_merge($v->getAttributes(), $value->getAttributes()), $v->getAllowedDomain())
+                    : new TypedReference($v, $value->getType(), $invalidBehavior, $value->getName(), $value->getAttributes(), $v->getAllowedDomain());
                 break;
             }
             if ($ref = $this->getAutowiredReference($value, true)) {
@@ -382,7 +382,7 @@ class AutowirePass extends AbstractRecursivePass
                             continue 2;
                         }
 
-                        $value = new LazyProxyArgument(new TypedReference((string) $value, $type, $value->getInvalidBehavior()), true === $lazy || \is_string($lazy) && str_contains($type, '&') && !str_contains($type, '|') ? [] : $lazy);
+                        $value = new LazyProxyArgument(new TypedReference((string) $value, $type, $value->getInvalidBehavior(), null, [], $value->getAllowedDomain()), true === $lazy || \is_string($lazy) && str_contains($type, '&') && !str_contains($type, '|') ? [] : $lazy);
                     }
                     $arguments[$index] = $value;
 
@@ -485,13 +485,13 @@ class AutowirePass extends AbstractRecursivePass
 
         if (null !== $name ??= $reference->getName()) {
             if (null !== ($alias = $this->getCombinedAlias($type, $name, $target)) && $this->canDefinitionBeAutowired($alias)) {
-                return new TypedReference($alias, $type, $reference->getInvalidBehavior());
+                return new TypedReference($alias, $type, $reference->getInvalidBehavior(), null, [], $reference->getAllowedDomain());
             }
 
             if ($this->container->has($name) && $this->canDefinitionBeAutowired($name)) {
                 foreach ($this->container->getAliases() as $id => $alias) {
                     if ($name === (string) $alias && str_starts_with($id, $type.' $')) {
-                        return new TypedReference($name, $type, $reference->getInvalidBehavior());
+                        return new TypedReference($this->preserveDomainAlias($id, $name), $type, $reference->getInvalidBehavior(), null, [], $reference->getAllowedDomain());
                     }
                 }
             }
@@ -502,7 +502,7 @@ class AutowirePass extends AbstractRecursivePass
         }
 
         if (null !== ($alias = $this->getCombinedAlias($type)) && $this->canDefinitionBeAutowired($alias)) {
-            return new TypedReference($alias, $type, $reference->getInvalidBehavior());
+            return new TypedReference($alias, $type, $reference->getInvalidBehavior(), null, [], $reference->getAllowedDomain());
         }
 
         return null;
@@ -748,7 +748,7 @@ class AutowirePass extends AbstractRecursivePass
             return $prefix || $name !== $parsedName && ($name = $parsedName) ? $this->getCombinedAlias($type, $name) : null;
         }
 
-        $alias = null;
+        $alias = $aliasId = null;
 
         foreach ($types as $type) {
             if (!$this->container->hasAlias($prefix.$type.$suffix)) {
@@ -756,13 +756,20 @@ class AutowirePass extends AbstractRecursivePass
             }
 
             if (null === $alias) {
-                $alias = (string) $this->container->getAlias($prefix.$type.$suffix);
+                $alias = (string) $this->container->getAlias($aliasId = $prefix.$type.$suffix);
             } elseif ((string) $this->container->getAlias($prefix.$type.$suffix) !== $alias && $this->resolveAlias($prefix.$type.$suffix) !== $this->resolveAlias($alias)) {
                 return $prefix || $name !== $parsedName && ($name = $parsedName) ? $this->getCombinedAlias($type, $name) : null;
             }
         }
 
-        return $alias;
+        return null === $alias ? null : $this->preserveDomainAlias($aliasId, $alias);
+    }
+
+    private function preserveDomainAlias(string $alias, string $target): string
+    {
+        $domain = (new ServiceDomain($this->container))->get($alias);
+
+        return $domain['domains'] || $domain['allowed'] ? $alias : $target;
     }
 
     private function resolveAlias(string $id): string

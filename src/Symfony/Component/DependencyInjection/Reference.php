@@ -21,6 +21,7 @@ class Reference
     public function __construct(
         private string $id,
         private int $invalidBehavior = ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE,
+        private ?string $allowDomain = null,
     ) {
     }
 
@@ -37,6 +38,11 @@ class Reference
         return $this->invalidBehavior ??= ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE;
     }
 
+    public function getAllowedDomain(): ?string
+    {
+        return $this->allowDomain ?? null;
+    }
+
     public function __serialize(): array
     {
         $data = [];
@@ -45,6 +51,9 @@ class Reference
                 $k = substr($k, 1 + $i);
             }
             if ('invalidBehavior' === $k && ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE === $v) {
+                continue;
+            }
+            if ('allowDomain' === $k && null === $v) {
                 continue;
             }
             $data[$k] = $v;

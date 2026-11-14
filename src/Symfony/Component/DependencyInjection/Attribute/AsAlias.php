@@ -35,6 +35,8 @@ class AsAlias
         public bool $public = false,
         string|array $when = [],
         public ?string $target = null,
+        public ?bool $exposed = null,
+        public array $allowedDomains = [],
     ) {
         $this->when = (array) $when;
     }

@@ -247,13 +247,16 @@ abstract class FileLoader extends BaseFileLoader
                         throw new LogicException(\sprintf('The "%s" alias has already been defined with the #[AsAlias] attribute in "%s".', $alias, $this->aliases[$alias]));
                     }
 
-                    $this->aliases[$alias] = new Alias($class, $public);
+                    $this->aliases[$alias] = (new Alias($class, $public))->setExposed($attribute->exposed)->setAllowedDomains($attribute->allowedDomains);
                     continue;
                 }
                 if ($public) {
                     throw new LogicException(\sprintf('#[AsAlias] attributes with a target cannot be public in "%s".', $class));
                 }
-                $this->container->registerAliasForArgument($class, $alias, $attribute->target);
+                $this->container->registerAliasForArgument($class, $alias, $attribute->target)->setExposed($attribute->exposed)->setAllowedDomains($attribute->allowedDomains);
+                if ($this->container->hasAlias($targetId = '.'.$alias.' $'.$attribute->target)) {
+                    $this->container->getAlias($targetId)->setExposed($attribute->exposed)->setAllowedDomains($attribute->allowedDomains);
+                }
                 $parsedName = (new Target($attribute->target))->getParsedName();
                 $alias = $alias.' $'.$parsedName;
                 if (isset($this->aliasedTargets[$alias])) {
@@ -275,8 +278,8 @@ abstract class FileLoader extends BaseFileLoader
     public function registerAliasesForSinglyImplementedInterfaces(): void
     {
         foreach ($this->interfaces as $interface) {
-            if (!empty($this->singlyImplemented[$interface]) && !isset($this->aliases[$interface]) && !$this->container->has($interface)) {
-                $this->container->setAlias($interface, $this->singlyImplemented[$interface]);
+            if (($this->singlyImplemented[$interface] ?? false) && !isset($this->aliases[$interface]) && !$this->container->has($interface)) {
+                $this->container->setAlias($interface, $this->singlyImplemented[$interface])->setExposed(false);
             }
         }
 

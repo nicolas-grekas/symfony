@@ -38,6 +38,20 @@ class XmlDumperTest extends TestCase
 {
     protected static string $fixturesPath;
 
+    public function testDomainMetadataIsDumped()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->setAlias('api', 'internal')->setExposed(true)->setAllowedDomains(['migrations']);
+        $container->register('consumer', \ArrayObject::class)->setArguments([[new Reference('internal', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing')]]);
+
+        $xml = (new XmlDumper($container))->dump();
+
+        $this->assertStringContainsString('allow-domain="billing"', $xml);
+        $this->assertStringContainsString('id="api" alias="internal" exposed="true"', $xml);
+        $this->assertStringContainsString('<exposed-to domain="migrations"/>', $xml);
+    }
+
     public static function setUpBeforeClass(): void
     {
         self::$fixturesPath = realpath(__DIR__.'/../Fixtures');
