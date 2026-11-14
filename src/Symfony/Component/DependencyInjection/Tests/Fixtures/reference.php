@@ -89,6 +89,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * }
  * @psalm-type AliasType = string|array{
  *     alias: string,
+ *     exposed?: bool|null,
+ *     allowed_domains?: list<string>,
  *     public?: bool,
  *     deprecated?: DeprecationType,
  * }

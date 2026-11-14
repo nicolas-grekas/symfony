@@ -27,6 +27,8 @@ class AddBehaviorDescribingTagsPass implements CompilerPassInterface
         'container.service_subscriber',
         'container.service_subscriber.locator',
         'container.decoration_order',
+        'container.domain',
+        'container.exposed_to',
     ];
 
     /**

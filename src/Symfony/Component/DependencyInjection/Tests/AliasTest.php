@@ -18,6 +18,19 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 
 class AliasTest extends TestCase
 {
+    public function testSerializationPreservesDomainPolicy()
+    {
+        foreach ([null, false, true] as $exposed) {
+            $alias = (new Alias('foo'))->setExposed($exposed)->setDomains([])->setAllowedDomains(['migrations']);
+            $copy = unserialize(serialize($alias), ['allowed_classes' => [Alias::class]]);
+
+            $this->assertSame($exposed, $copy->isExposed());
+            $this->assertSame([], $copy->getDomains());
+            $this->assertSame(['migrations'], $copy->getAllowedDomains());
+            $this->assertSame(serialize($alias), serialize($copy));
+        }
+    }
+
     public function testConstructor()
     {
         $alias = new Alias('foo');

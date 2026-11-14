@@ -1,0 +1,7 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Symfony\Component\DependencyInjection\Tests\Fixtures\Domain\:
+        resource: Domain/

@@ -33,6 +33,8 @@ class AddBehaviorDescribingTagsPassTest extends TestCase
             'container.service_subscriber',
             'container.service_subscriber.locator',
             'container.decoration_order',
+            'container.domain',
+            'container.exposed_to',
             'kernel.event_subscriber',
             'kernel.reset',
         ], $container->getParameter('container.behavior_describing_tags'));
@@ -52,6 +54,8 @@ class AddBehaviorDescribingTagsPassTest extends TestCase
             'container.service_subscriber',
             'container.service_subscriber.locator',
             'container.decoration_order',
+            'container.domain',
+            'container.exposed_to',
             'kernel.event_subscriber',
             'kernel.reset',
             'kernel.locale_aware',

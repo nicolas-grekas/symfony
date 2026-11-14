@@ -4,6 +4,7 @@ CHANGELOG
 8.2
 ---
 
+ * Add service domains with `#[Domain]`, `#[ExposeTo]`, alias exposure and explicit reference allowances
  * [BC BREAK] Make `#[AutowireCallable]` and `#[AutowireMethodOf]` lazy by default
  * Add the `on_shutdown` attribute on `kernel.reset` tags to pass a shutdown flag or call a method only on shutdown
  * Add argument `$shutdown` to `Container::reset()`

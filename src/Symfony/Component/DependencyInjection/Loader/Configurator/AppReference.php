@@ -102,6 +102,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  * }
  * @psalm-type AliasType = string|array{
  *     alias: string,
+ *     exposed?: bool|null,
+ *     allowed_domains?: list<string>,
  *     public?: bool,
  *     deprecated?: DeprecationType,
  * }
