@@ -47,6 +47,7 @@ class ContainerDebugCommand extends Command
                 new InputArgument('name', InputArgument::OPTIONAL, 'A service name (foo)'),
                 new InputOption('show-hidden', null, InputOption::VALUE_NONE, 'Show hidden (internal) services'),
                 new InputOption('tag', null, InputOption::VALUE_REQUIRED, 'Show all services with a specific tag'),
+                new InputOption('domain', null, InputOption::VALUE_REQUIRED, 'Show services belonging or granted to a domain'),
                 new InputOption('tags', null, InputOption::VALUE_NONE, 'Display tagged services for an application'),
                 new InputOption('parameter', null, InputOption::VALUE_REQUIRED, 'Display a specific parameter for an application'),
                 new InputOption('parameters', null, InputOption::VALUE_NONE, 'Display parameters for an application'),
@@ -69,6 +70,10 @@ class ContainerDebugCommand extends Command
                 To get specific information about a service, specify its name:
 
                   <info>%command.invocation% validator</info>
+
+                To inspect a domain, its grants and its dependencies:
+
+                  <info>%command.invocation% --domain=billing</info>
 
                 To see available types that can be used for autowiring, use the <info>--types</info> flag:
 
@@ -156,6 +161,20 @@ class ContainerDebugCommand extends Command
             $options = [];
         }
 
+        if (null !== $domain = $input->getOption('domain')) {
+            $domains = $object->hasParameter('.container.domains') ? json_decode($object->getParameter('.container.domains'), true, 512, \JSON_THROW_ON_ERROR) : [];
+            $members = array_filter($domains, static fn (array $info) => \in_array($domain, $info['domains'], true) || \in_array($domain, $info['allowed'], true));
+            if (!$members) {
+                throw new InvalidArgumentException(\sprintf('No services belong or are granted to the "%s" domain.', $domain));
+            }
+            if (isset($options['id']) && !isset($members[$options['id']])) {
+                throw new InvalidArgumentException(\sprintf('The service "%s" does not belong and is not granted to the "%s" domain.', $options['id'], $domain));
+            }
+            $filter = $options['filter'] ?? null;
+            $options['filter'] = static fn (string $id) => isset($members[$id]) && (!$filter || $filter($id));
+            $options['domain'] = $domain;
+        }
+
         $helper = new DescriptorHelper();
         $options['format'] = $input->getOption('format');
         $options['show_hidden'] = $input->getOption('show-hidden');
@@ -223,6 +242,18 @@ class ContainerDebugCommand extends Command
         $kernel = $this->getApplication()->getKernel();
         $object = $this->getContainerBuilder($kernel);
 
+        if ($input->mustSuggestOptionValuesFor('domain')) {
+            $domains = [];
+            foreach ($object->hasParameter('.container.domains') ? json_decode($object->getParameter('.container.domains'), true, 512, \JSON_THROW_ON_ERROR) : [] as $info) {
+                array_push($domains, ...$info['domains'], ...$info['allowed']);
+            }
+            $domains = array_values(array_unique($domains));
+            sort($domains);
+            $suggestions->suggestValues($domains);
+
+            return;
+        }
+
         if ($input->mustSuggestArgumentValuesFor('name')
             && !$input->getOption('tag') && !$input->getOption('tags')
             && !$input->getOption('parameter') && !$input->getOption('parameters')
@@ -257,6 +288,14 @@ class ContainerDebugCommand extends Command
     protected function validateInput(InputInterface $input): void
     {
         $options = ['tags', 'tag', 'parameters', 'parameter'];
+
+        if (null !== $input->getOption('domain')) {
+            foreach (['tags', 'parameters', 'parameter', 'env-vars', 'env-var', 'deprecations'] as $option) {
+                if ($input->getOption($option)) {
+                    throw new InvalidArgumentException(\sprintf('The "--domain" option cannot be combined with "--%s".', $option));
+                }
+            }
+        }
 
         $optionsCount = 0;
         foreach ($options as $option) {

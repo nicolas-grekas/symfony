@@ -20,6 +20,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\ErrorHandler\ErrorRenderer\FileLinkFormatter;
 
@@ -46,6 +47,7 @@ class DebugAutowiringCommand extends ContainerDebugCommand
             ->setDefinition([
                 new InputArgument('search', InputArgument::OPTIONAL, 'A search filter'),
                 new InputOption('all', null, InputOption::VALUE_NONE, 'Show also services that are not aliased, and deprecated aliases'),
+                new InputOption('for', null, InputOption::VALUE_REQUIRED, 'Show types accessible to a specific service'),
             ])
             ->setHelp(<<<'EOF'
                 The <info>%command.name%</info> command displays the classes and interfaces that
@@ -56,6 +58,10 @@ class DebugAutowiringCommand extends ContainerDebugCommand
                 You can also pass a search term to filter the list:
 
                   <info>%command.invocation% log</info>
+
+                To apply the domains and dependency restrictions of a service:
+
+                  <info>%command.invocation% --for=app.migration</info>
 
                 EOF
             )
@@ -68,8 +74,8 @@ class DebugAutowiringCommand extends ContainerDebugCommand
         $errorIo = $io->getErrorStyle();
 
         $container = $this->getContainerBuilder($this->getApplication()->getKernel());
-        $serviceIds = $container->getServiceIds();
-        $serviceIds = array_filter($serviceIds, $this->filterToServiceTypes(...));
+        $consumer = $input->getOption('for');
+        $serviceIds = $this->getAccessibleTypes($container, $consumer);
 
         if ($search = $input->getArgument('search')) {
             $searchNormalized = preg_replace('/[^a-zA-Z0-9\x7f-\xff $]++/', '', $search);
@@ -94,6 +100,9 @@ class DebugAutowiringCommand extends ContainerDebugCommand
         uasort($serviceIds, 'strnatcmp');
 
         $io->title('Autowirable Types');
+        if (null !== $consumer) {
+            $io->text(\sprintf('Showing types accessible to service "%s".', $consumer));
+        }
         $io->text('Use the following classes & interfaces as type-hints in constructor arguments to autowire services.');
         $io->text('Add <fg=magenta>#[Target(\'</><fg=cyan>name</><fg=magenta>\')]</> to the argument to select a specific variant.');
         if ($search) {
@@ -256,10 +265,39 @@ class DebugAutowiringCommand extends ContainerDebugCommand
 
     public function complete(CompletionInput $input, CompletionSuggestions $suggestions): void
     {
+        if ($input->mustSuggestOptionValuesFor('for')) {
+            $suggestions->suggestValues($this->getContainerBuilder($this->getApplication()->getKernel())->getServiceIds());
+
+            return;
+        }
         if ($input->mustSuggestArgumentValuesFor('search')) {
             $container = $this->getContainerBuilder($this->getApplication()->getKernel());
 
-            $suggestions->suggestValues(array_filter($container->getServiceIds(), $this->filterToServiceTypes(...)));
+            $suggestions->suggestValues($this->getAccessibleTypes($container, $input->getOption('for')));
         }
+    }
+
+    private function getAccessibleTypes(ContainerBuilder $container, ?string $consumer): array
+    {
+        if (null !== $consumer && !$container->has($consumer)) {
+            throw new ServiceNotFoundException($consumer);
+        }
+        while (null !== $consumer && $container->hasAlias($consumer)) {
+            $consumer = (string) $container->getAlias($consumer);
+        }
+        $domains = $container->hasParameter('.container.domains') ? json_decode($container->getParameter('.container.domains'), true, 512, \JSON_THROW_ON_ERROR) : [];
+        $source = $domains[$consumer ?? ''] ?? ['domains' => [], 'restricted' => []];
+
+        return array_filter($container->getServiceIds(), function (string $id) use ($domains, $source): bool {
+            if (!$this->filterToServiceTypes($id)) {
+                return false;
+            }
+            $target = $domains[$id] ?? ['domains' => [], 'allowed' => [], 'exposed' => false];
+            if (array_diff($source['restricted'], [...$target['domains'], ...$target['allowed']])) {
+                return false;
+            }
+
+            return !$target['domains'] || $target['exposed'] || array_intersect($source['domains'], [...$target['domains'], ...$target['allowed']]);
+        });
     }
 }

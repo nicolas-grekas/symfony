@@ -48,12 +48,20 @@ abstract class Descriptor implements DescriptorInterface
 
     protected OutputInterface $output;
 
+    private array $domains = [];
+    private array $domainReferences = [];
+
     public function describe(OutputInterface $output, mixed $object, array $options = []): void
     {
         $this->output = $output;
+        $this->domains = $this->domainReferences = [];
 
         if ($object instanceof ContainerBuilder) {
             (new AnalyzeServiceReferencesPass(false, false))->process($object);
+            if ($object->hasParameter('.container.domains')) {
+                $this->domains = json_decode($object->getParameter('.container.domains'), true, 512, \JSON_THROW_ON_ERROR);
+                $this->domainReferences = json_decode($object->getParameter('.container.domain_references'), true, 512, \JSON_THROW_ON_ERROR);
+            }
         }
 
         $deprecatedParameters = [];
@@ -202,6 +210,39 @@ abstract class Descriptor implements DescriptorInterface
 
         // the service has been injected in some special way, just return the service
         return $container->get($serviceId);
+    }
+
+    protected function getContainerDomainData(?ContainerBuilder $container, ?string $id): array
+    {
+        if (null === $container || null === $id || !$container->hasParameter('.container.domains')) {
+            return [];
+        }
+        $info = $this->domains[$id] ?? null;
+        if (null === $info) {
+            return [];
+        }
+
+        return ['domains' => $info['domains'], 'exposed' => $info['exposed'], 'restricted_domains' => $info['restricted'], 'allowed_domains' => $info['allowed']];
+    }
+
+    protected function getContainerDomainReferences(ContainerBuilder $container, ?string $domain = null, ?string $id = null): array
+    {
+        if (!$container->hasParameter('.container.domain_references')) {
+            return [];
+        }
+        $references = [];
+        foreach ($this->domainReferences as $source => $targets) {
+            if (null !== $id && $source !== $id) {
+                continue;
+            }
+            foreach ($targets as $info) {
+                if (null === $domain || \in_array($domain, [...($this->domains[$source]['domains'] ?? []), ...($this->domains[$source]['allowed'] ?? []), ...$info['domains'], ...($this->domains[$info['service']]['allowed'] ?? [])], true)) {
+                    $references[$source][] = $info;
+                }
+            }
+        }
+
+        return $references;
     }
 
     protected function findDefinitionsByTag(ContainerBuilder $container, bool $showHidden): array
