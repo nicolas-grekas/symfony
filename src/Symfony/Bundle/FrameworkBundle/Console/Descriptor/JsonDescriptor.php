@@ -110,7 +110,7 @@ class JsonDescriptor extends Descriptor
             }
 
             if ($service instanceof Alias) {
-                $data['aliases'][$serviceId] = $this->getContainerAliasData($service, $container, $serviceId);
+                $data['aliases'][$serviceId] = $this->getContainerAliasData($service);
             } elseif ($service instanceof Definition) {
                 if ($service->hasTag('container.excluded')) {
                     continue;
@@ -121,9 +121,6 @@ class JsonDescriptor extends Descriptor
             }
         }
 
-        if (isset($options['domain'])) {
-            $data['domain_references'] = $this->getContainerDomainReferences($container, $options['domain']);
-        }
         $this->writeData($data, $options);
     }
 
@@ -141,7 +138,7 @@ class JsonDescriptor extends Descriptor
         }
 
         $this->writeData(
-            [$this->getContainerAliasData($alias, $container, $options['id'] ?? null), $this->getContainerDefinitionData($container->getDefinition((string) $alias), isset($options['omit_tags']) && $options['omit_tags'], $container, (string) $alias)],
+            [$this->getContainerAliasData($alias), $this->getContainerDefinitionData($container->getDefinition((string) $alias), isset($options['omit_tags']) && $options['omit_tags'], $container, (string) $alias)],
             array_merge($options, ['id' => (string) $alias])
         );
     }
@@ -263,10 +260,6 @@ class JsonDescriptor extends Descriptor
             'autowire' => $definition->isAutowired(),
             'autoconfigure' => $definition->isAutoconfigured(),
         ];
-        $data += $this->getContainerDomainData($container, $id);
-        if (null !== $container && null !== $id && $references = $this->getContainerDomainReferences($container, null, $id)) {
-            $data['domain_references'] = $references[$id];
-        }
 
         if ($definition->isDeprecated()) {
             $data['deprecated'] = true;
@@ -327,12 +320,12 @@ class JsonDescriptor extends Descriptor
         return $data;
     }
 
-    private function getContainerAliasData(Alias $alias, ?ContainerBuilder $container = null, ?string $id = null): array
+    private function getContainerAliasData(Alias $alias): array
     {
         return [
             'service' => (string) $alias,
             'public' => $alias->isPublic(),
-        ] + $this->getContainerDomainData($container, $id);
+        ];
     }
 
     private function getEventDispatcherListenersData(EventDispatcherInterface $eventDispatcher, array $options): array

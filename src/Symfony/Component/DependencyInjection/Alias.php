@@ -19,9 +19,6 @@ class Alias
 
     private bool $public = false;
     private array $deprecation = [];
-    private ?bool $exposed = null;
-    private ?array $domains = null;
-    private array $allowedDomains = [];
 
     public function __construct(
         private string $id,
@@ -56,58 +53,6 @@ class Alias
     public function isPrivate(): bool
     {
         return !$this->public;
-    }
-
-    public function setExposed(?bool $exposed): static
-    {
-        $this->exposed = $exposed;
-
-        return $this;
-    }
-
-    public function isExposed(): ?bool
-    {
-        return $this->exposed;
-    }
-
-    /**
-     * @param list<string>|null $domains
-     *
-     * @internal
-     */
-    public function setDomains(?array $domains): static
-    {
-        $this->domains = $domains;
-
-        return $this;
-    }
-
-    /**
-     * @return list<string>|null
-     *
-     * @internal
-     */
-    public function getDomains(): ?array
-    {
-        return $this->domains;
-    }
-
-    /**
-     * @param list<string> $domains
-     */
-    public function setAllowedDomains(array $domains): static
-    {
-        $this->allowedDomains = $domains;
-
-        return $this;
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function getAllowedDomains(): array
-    {
-        return $this->allowedDomains;
     }
 
     /**
@@ -165,11 +110,11 @@ class Alias
     {
         $data = [];
         foreach ((array) $this as $k => $v) {
+            if (!$v) {
+                continue;
+            }
             if (false !== $i = strrpos($k, "\0")) {
                 $k = substr($k, 1 + $i);
-            }
-            if (!$v && !('exposed' === $k && false === $v) && !('domains' === $k && [] === $v)) {
-                continue;
             }
             $data[$k] = $v;
         }

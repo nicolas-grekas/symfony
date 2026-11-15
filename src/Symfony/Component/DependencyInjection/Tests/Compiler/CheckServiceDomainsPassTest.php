@@ -13,61 +13,28 @@ namespace Symfony\Component\DependencyInjection\Tests\Compiler;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface as PsrContainerInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Argument\LazyProxyArgument;
 use Symfony\Component\DependencyInjection\Argument\ServiceLocatorArgument;
 use Symfony\Component\DependencyInjection\Argument\TaggedIteratorArgument;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Domain;
-use Symfony\Component\DependencyInjection\Attribute\ExposeTo;
+use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceException;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\Domain\Contract;
 use Symfony\Component\DependencyInjection\TypedReference;
 use Symfony\Component\ExpressionLanguage\Expression;
+use Symfony\Contracts\Service\ServiceSubscriberInterface;
 
 class CheckServiceDomainsPassTest extends TestCase
 {
-    #[DataProvider('provideInternalReferences')]
-    public function testInternalServicesCannotBeReferencedFromOutsideTheirDomain(string $kind)
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing'])->addTag('handler');
-        $container->setAlias('internal_alias', 'internal');
-        $argument = match ($kind) {
-            'direct' => new Reference('internal'),
-            'alias' => new Reference('internal_alias'),
-            'locator' => new ServiceLocatorArgument(['internal' => new Reference('internal')]),
-            'iterator' => new TaggedIteratorArgument('handler'),
-            'expression' => new Expression('service("internal")'),
-            'inline' => new Definition(DomainConsumer::class, [new Reference('internal')]),
-            'lazy' => new LazyProxyArgument(new TypedReference('internal', \stdClass::class)),
-        };
-        $container->register('consumer', DomainConsumer::class)->setArguments([$argument])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public static function provideInternalReferences(): iterable
-    {
-        yield ['direct'];
-        yield ['alias'];
-        yield ['locator'];
-        yield ['iterator'];
-        yield ['expression'];
-        yield ['inline'];
-        yield ['lazy'];
-    }
-
-    public function testServicesInTheSameDomainCanReferenceEachOther()
+    public function testServicesOfTheSameDomainCanReferenceEachOther()
     {
         $container = new ContainerBuilder();
         $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
@@ -78,10 +45,44 @@ class CheckServiceDomainsPassTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
     }
 
-    public function testAnExposedDefinitionCanBeReferencedFromOutsideItsDomain()
+    #[DataProvider('provideReferences')]
+    public function testAnInternalServiceCannotBeReferencedFromAnotherDomain(string $kind)
+    {
+        $container = $this->createContainerWithReference($kind, false);
+
+        $this->expectException(RuntimeException::class);
+        $id = 'alias' === $kind ? 'alias' : 'target';
+        $this->expectExceptionMessage('The service "consumer" cannot reference "'.$id.'": "'.$id.'" is internal to the "billing" domain. Expose it or add "consumer" to this domain.');
+
+        $container->compile();
+    }
+
+    #[DataProvider('provideReferences')]
+    public function testAnExposedServiceCanBeReferencedFromAnotherDomain(string $kind)
+    {
+        $container = $this->createContainerWithReference($kind, true);
+
+        $container->compile();
+
+        $this->assertInstanceOf(DomainConsumer::class, $container->get('consumer'));
+    }
+
+    public static function provideReferences(): iterable
+    {
+        yield ['direct'];
+        yield ['alias'];
+        yield ['locator'];
+        yield ['iterator'];
+        yield ['expression'];
+        yield ['inline'];
+        yield ['lazy'];
+        yield ['hidden'];
+    }
+
+    public function testAServiceOutsideAnyDomainIsNotChecked()
     {
         $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true]);
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
         $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
 
         $container->compile();
@@ -89,59 +90,140 @@ class CheckServiceDomainsPassTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
     }
 
-    public function testAnUnusedViolationDoesNotPreventCompilation()
+    public function testAServiceOutsideAnyDomainCanBeReferenced()
     {
         $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('unused', DomainConsumer::class)->setArguments([new Reference('internal')]);
-
-        $container->compile();
-
-        $this->assertFalse($container->has('unused'));
-    }
-
-    public function testDeclaredAutowiringAliasesExposeTheService()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias(DomainApi::class, 'internal');
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference(DomainApi::class)])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(DomainImplementation::class, $container->get('consumer')->dependency);
-    }
-
-    public function testAReferenceCanAcknowledgeAccessToADomain()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing')])->setPublic(true);
+        $container->register('logger', \stdClass::class);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('logger')])->setPublic(true);
 
         $container->compile();
 
         $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
     }
 
-    public function testRestrictedConsumersCannotUseUntaggedServices()
+    public function testAServiceCanBelongToSeveralDomains()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('internal')])->setPublic(true);
+
+        $container->compile();
+
+        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
+    }
+
+    public function testAnInternalServiceOfSeveralDomainsNamesThemAll()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing'])->addTag('container.domain', ['domain' => 'audit']);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('internal')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('"internal" is internal to the "billing", "audit" domains. Expose it or add "consumer" to one of these domains.');
+
+        $container->compile();
+    }
+
+    public function testADomainDeclaredTwiceCountsOnce()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing'])->addTag('container.domain', ['domain' => 'billing', 'restricted' => true]);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping', 'restricted' => true])->addTag('container.domain', ['domain' => 'shipping', 'restricted' => true, 'exposed' => true])->setArguments([new Reference('internal')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "consumer" cannot reference "internal": "consumer" is restricted to the "shipping" domain. Add "internal" to this domain to allow it.');
+
+        $container->compile();
+    }
+
+    public function testAServiceIsExposedWhenOneOfItsMembershipsExposesIt()
+    {
+        $container = new ContainerBuilder();
+        $container->register('api', \stdClass::class)->addTag('container.domain', ['domain' => 'audit', 'exposed' => true])->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('api')])->setPublic(true);
+
+        $container->compile();
+
+        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
+    }
+
+    public function testAViolationInAnUnusedServiceDoesNotPreventCompilation()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('unused', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('internal')]);
+
+        $container->compile();
+
+        $this->assertFalse($container->has('unused'));
+    }
+
+    public function testAPublicServiceCanStillBeInternal()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing'])->setPublic(true);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('internal')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('"internal" is internal to the "billing" domain');
+
+        $container->compile();
+    }
+
+    public function testACircularAliasIsNotFollowed()
+    {
+        $container = new ContainerBuilder();
+        $container->setAlias('first', 'second');
+        $container->setAlias('second', 'first');
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('first')])->setPublic(true);
+
+        $this->expectException(ServiceCircularReferenceException::class);
+
+        $container->compile();
+    }
+
+    public function testAnOptionalReferenceToAMissingServiceIsIgnored()
+    {
+        $container = new ContainerBuilder();
+        $container->setAlias('missing_alias', 'missing_service');
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing', 'restricted' => true])->setArguments([new Reference('missing_alias', ContainerBuilder::NULL_ON_INVALID_REFERENCE)])->setPublic(true);
+
+        $container->compile();
+
+        $this->assertNull($container->get('consumer')->dependency);
+    }
+
+    public function testARestrictedServiceCannotReferenceAServiceOutsideItsDomain()
     {
         $container = new ContainerBuilder();
         $container->register('mailer', \stdClass::class);
         $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference('mailer')])->setPublic(true);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('not available to the restricted "migrations" domain');
+        $this->expectExceptionMessage('The service "migration" cannot reference "mailer": "migration" is restricted to the "migrations" domain. Add "mailer" to this domain to allow it.');
 
         $container->compile();
     }
 
-    public function testGrantsOnlyRestrictDirectDependencies()
+    public function testARestrictedServiceCannotReferenceAnExposedServiceOfAnotherDomain()
+    {
+        $container = new ContainerBuilder();
+        $container->register('api', \stdClass::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true]);
+        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference('api')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('"migration" is restricted to the "migrations" domain');
+
+        $container->compile();
+    }
+
+    public function testAServiceAllowedInARestrictedDomainKeepsItsDependenciesAndItsConsumers()
     {
         $container = new ContainerBuilder();
         $container->register('configuration', \stdClass::class);
-        $container->register('connection', DomainConsumer::class)->addTag('container.exposed_to', ['domain' => 'migrations'])->setArguments([new Reference('configuration')]);
+        $container->register('connection', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'exposed' => true])->setArguments([new Reference('configuration')]);
         $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference('connection')])->setPublic(true);
-        $container->register('application', DomainConsumer::class)->setArguments([new Reference('connection')])->setPublic(true);
+        $container->register('application', DomainConsumer::class)->addTag('container.domain', ['domain' => 'app'])->setArguments([new Reference('connection')])->setPublic(true);
 
         $container->compile();
 
@@ -149,265 +231,22 @@ class CheckServiceDomainsPassTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $container->get('migration')->dependency->dependency);
     }
 
-    public function testExposingAnAliasDoesNotGrantItToRestrictedDomains()
+    #[DataProvider('provideRestrictedMemberships')]
+    public function testEveryRestrictedDomainMustContainTheDependency(array $consumer, array $dependency, ?string $missing)
     {
         $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias(DomainApi::class, 'internal');
-        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference(DomainApi::class)])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('not available to the restricted "migrations" domain');
-
-        $container->compile();
-    }
-
-    public function testAttributesConfigureMembershipAndGrants()
-    {
-        $container = new ContainerBuilder();
-        $container->register(DomainMigration::class)->setAutoconfigured(true)->setAutowired(true)->setPublic(true);
-        $container->register(DomainConnection::class)->setAutoconfigured(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(DomainConnection::class, $container->get(DomainMigration::class)->connection);
-    }
-
-    public function testAutowireAttributePreservesAnAllowance()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register(DomainAllowedConsumer::class)->setAutowired(true)->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(\stdClass::class, $container->get(DomainAllowedConsumer::class)->dependency);
-    }
-
-    public function testInferredAutowiringAliasesDoNotExposeServices()
-    {
-        $container = new ContainerBuilder();
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Fixtures'));
-        $loader->load('domain_services.yml');
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference(\Symfony\Component\DependencyInjection\Tests\Fixtures\Domain\Contract::class)])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testDecorationPreservesInternalVisibility()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('internal')->setArguments([new Reference('.inner')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testDecorationPreservesAliasExposure()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias('api', 'internal')->setExposed(true);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('api')->setArguments([new Reference('.inner')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('api')])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency->dependency);
-    }
-
-    public function testDecoratingAnApiDoesNotGrantAccessToOtherInternals()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('other_internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias('api', 'internal')->setExposed(true);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('api')->setArguments([new Reference('other_internal')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('api')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('service "decorator" cannot reference "other_internal"');
-
-        $container->compile();
-    }
-
-    public function testAnAllowanceMustMatchTheTargetDomain()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('does not belong to that domain');
-
-        $container->compile();
-    }
-
-    public function testDecorationKeepsTheOriginalServicesDomain()
-    {
-        $container = new ContainerBuilder();
-        $container->register('dependency', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('internal', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true])->setArguments([new Reference('dependency')]);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('internal')->setArguments([new Reference('.inner')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency->dependency->dependency);
-    }
-
-    public function testADecoratorDoesNotJoinTheDecoratedServicesDomain()
-    {
-        $container = new ContainerBuilder();
-        $container->register('dependency', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true]);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('internal')->setArguments([new Reference('dependency')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('service "decorator" cannot reference "dependency"');
-
-        $container->compile();
-    }
-
-    public function testRestrictedConsumersCanUseLocatorsOfGrantedServices()
-    {
-        $container = new ContainerBuilder();
-        $container->register('connection', \stdClass::class)->addTag('container.exposed_to', ['domain' => 'migrations']);
-        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new ServiceLocatorArgument(['connection' => new Reference('connection')])])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(\stdClass::class, $container->get('migration')->dependency->get('connection'));
-    }
-
-    public function testASharedLocatorIsCheckedForEachConsumer()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        foreach (['billing', 'other'] as $domain) {
-            $container->register($domain, DomainConsumer::class)->addTag('container.domain', ['domain' => $domain])->setArguments([new ServiceLocatorArgument(['internal' => new Reference('internal')])])->setPublic(true);
+        $definition = $container->register('dependency', \stdClass::class);
+        foreach ($dependency as $domain) {
+            $definition->addTag('container.domain', ['domain' => $domain]);
+        }
+        $definition = $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('dependency')])->setPublic(true);
+        foreach ($consumer as $domain => $restricted) {
+            $definition->addTag('container.domain', ['domain' => $domain, 'restricted' => $restricted]);
         }
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('service "other" cannot reference "internal"');
-
-        $container->compile();
-    }
-
-    public function testAnExposedDecoratorDoesNotExposeTheDecoratedId()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('decorator', DomainConsumer::class)->addTag('container.domain', ['domain' => 'other', 'exposed' => true])->setDecoratedService('internal')->setArguments([new Reference('.inner')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testDecorationDoesNotExposeTheGeneratedInnerAlias()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias('api', 'internal')->setExposed(true);
-        $container->register('decorator', DomainConsumer::class)->setDecoratedService('api')->setArguments([new Reference('.inner')]);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('decorator.inner')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testASameDomainLazyReferenceIsAllowed()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new LazyProxyArgument(new TypedReference('internal', DomainApi::class))])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertInstanceOf(DomainImplementation::class, $container->get('consumer')->dependency);
-    }
-
-    public function testAnAuditKeepsAnExceptionWhenAnotherReferenceUsesMembership()
-    {
-        $container = new ContainerBuilder();
-        $container->getCompilerPassConfig()->setAfterRemovingPasses([]);
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->register('consumer', \ArrayObject::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([[new Reference('internal', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing'), new Reference('internal')]])->setPublic(true);
-
-        $container->compile();
-
-        $this->assertSame(['reference', 'member'], array_column(json_decode($container->getParameter('.container.domain_references'), true, 512, \JSON_THROW_ON_ERROR)['consumer'], 'access'));
-    }
-
-    public function testAPublicServiceCanStillBeInternal()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing'])->setPublic(true);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testAnAutowiringAliasCanOptOutOfExposure()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias(DomainApi::class, 'internal')->setExposed(false);
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference(DomainApi::class)])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('internal to the "billing" domain');
-
-        $container->compile();
-    }
-
-    public function testAGrantOnAnAliasDoesNotGrantTheDefinition()
-    {
-        $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias(DomainApi::class, 'internal')->setAllowedDomains(['migrations']);
-        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference('internal')])->setPublic(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('not available to the restricted "migrations" domain');
-
-        $container->compile();
-    }
-
-    #[DataProvider('provideMemberships')]
-    public function testMultipleMemberships(array $source, array $target, array $allowed, bool $valid)
-    {
-        $container = new ContainerBuilder();
-        $dependency = $container->register('dependency', \stdClass::class);
-        foreach ($target as $domain) {
-            $dependency->addTag('container.domain', ['domain' => $domain]);
-        }
-        foreach ($allowed as $domain) {
-            $dependency->addTag('container.exposed_to', ['domain' => $domain]);
-        }
-        $consumer = $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('dependency')])->setPublic(true);
-        foreach ($source as $domain => $restricted) {
-            $consumer->addTag('container.domain', ['domain' => $domain, 'restricted' => $restricted]);
-        }
-        if (!$valid) {
+        if (null !== $missing) {
             $this->expectException(RuntimeException::class);
-            $this->expectExceptionMessage('not available to the restricted "audit" domain');
+            $this->expectExceptionMessage('"consumer" is restricted to the "'.$missing.'" domain');
         }
 
         $container->compile();
@@ -415,111 +254,292 @@ class CheckServiceDomainsPassTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency);
     }
 
-    public static function provideMemberships(): iterable
+    public static function provideRestrictedMemberships(): iterable
     {
-        yield [['billing' => false, 'shipping' => false], ['shipping'], [], true];
-        yield [['migrations' => true], ['billing', 'migrations'], [], true];
-        yield [['migrations' => true, 'audit' => true], [], ['migrations', 'audit'], true];
-        yield [['migrations' => true, 'audit' => true], [], ['migrations'], false];
+        yield [['migrations' => true], ['billing', 'migrations'], null];
+        yield [['migrations' => true, 'audit' => true], ['migrations', 'audit'], null];
+        yield [['migrations' => true, 'audit' => true], ['migrations'], 'audit'];
+        yield [['migrations' => true, 'billing' => false], ['billing'], 'migrations'];
     }
 
-    public function testOptionalMissingDependenciesKeepTheirExistingBehavior()
+    #[DataProvider('provideGeneratedServices')]
+    public function testARestrictedServiceCanUseGeneratedServicesThatHoldMembersOnly(string $kind, bool $member)
     {
         $container = new ContainerBuilder();
-        $container->setAlias('missing_alias', 'missing_service');
-        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('missing_alias', ContainerInterface::NULL_ON_INVALID_REFERENCE)])->setPublic(true);
+        $definition = $container->register('connection', DomainImplementation::class)->addTag('handler');
+        if ($member) {
+            $definition->addTag('container.domain', ['domain' => 'migrations', 'exposed' => true]);
+        }
+        $container->register('.hidden', DomainConsumer::class)->setArguments([new Reference('connection')]);
+        $argument = match ($kind) {
+            'locator' => new ServiceLocatorArgument(['connection' => new Reference('connection')]),
+            'iterator' => new TaggedIteratorArgument('handler'),
+            'lazy' => new LazyProxyArgument(new TypedReference('connection', DomainApi::class)),
+            'hidden' => new Reference('.hidden'),
+        };
+        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([$argument])->setPublic(true);
+
+        if (!$member) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('The service "migration" cannot reference "connection": "migration" is restricted to the "migrations" domain.');
+        }
 
         $container->compile();
 
-        $this->assertNull($container->get('consumer')->dependency);
+        $this->assertInstanceOf(DomainConsumer::class, $container->get('migration'));
     }
 
-    public function testTheDumpedContainerUsesTheSameServices()
+    public static function provideGeneratedServices(): iterable
+    {
+        foreach (['locator', 'iterator', 'lazy', 'hidden'] as $kind) {
+            yield [$kind, true];
+            yield [$kind, false];
+        }
+    }
+
+    public function testAHiddenServiceOfADomainIsCheckedLikeAnyOtherService()
+    {
+        $container = new ContainerBuilder();
+        $container->register('.internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('.internal')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "consumer" cannot reference ".internal": ".internal" is internal to the "billing" domain.');
+
+        $container->compile();
+    }
+
+    public function testALocatorSharedByTwoServicesIsCheckedForEachOfThem()
     {
         $container = new ContainerBuilder();
         $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        $container->setAlias('api', 'internal')->setExposed(true)->setPublic(true);
-        $container->register('consumer', \ArrayObject::class)->setArguments([[new Reference('api')]])->setPublic(true);
-        $container->compile();
-        $dump = (new PhpDumper($container))->dump(['class' => 'ServiceDomainsTestContainer']);
-        eval('?>'.$dump);
-        $compiled = new \ServiceDomainsTestContainer();
-
-        $this->assertSame($compiled->get('api'), $compiled->get('consumer')[0]);
-        $this->assertStringNotContainsString('.container.domains', $dump);
-        $this->assertStringNotContainsString('.container.domain_references', $dump);
-    }
-
-    public function testTheAuditIncludesDependenciesOutsideDomains()
-    {
-        $container = new ContainerBuilder();
-        $container->getCompilerPassConfig()->setAfterRemovingPasses([]);
-        $container->register('configuration', \stdClass::class);
-        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('configuration')])->setPublic(true);
-
-        $container->compile();
-
-        $references = json_decode($container->getParameter('.container.domain_references'), true, 512, \JSON_THROW_ON_ERROR);
-        $this->assertSame([['service' => 'configuration', 'domains' => [], 'access' => 'unrestricted', 'allow_domain' => null]], $references['consumer'] ?? []);
-    }
-
-    #[DataProvider('provideReferenceReplacements')]
-    public function testReferenceReplacementsPreserveAllowances(bool $deprecated)
-    {
-        $container = new ContainerBuilder();
-        $definition = $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
-        if ($deprecated) {
-            $definition->setPublic(true)->addTag('container.private', ['package' => 'test', 'version' => '1.0']);
-        } else {
-            $container->setAlias('api', 'internal')->setExposed(true)->setPublic(true);
+        foreach (['billing', 'shipping'] as $domain) {
+            $container->register($domain, DomainConsumer::class)->addTag('container.domain', ['domain' => $domain])->setArguments([new ServiceLocatorArgument(['internal' => new Reference('internal')])])->setPublic(true);
         }
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('internal', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "shipping" cannot reference "internal"');
+
+        $container->compile();
+    }
+
+    #[DataProvider('provideLocatorContexts')]
+    public function testALocatorIsCheckedAsTheServiceItWasCreatedFor(string $context, string $domain, bool $valid)
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('controller', \stdClass::class)->addTag('container.domain', ['domain' => $domain, 'exposed' => true])->setPublic(true);
+        $container->register('resolver', DomainConsumer::class)->setArguments([ServiceLocatorTagPass::register($container, ['argument' => new Reference('internal')], $context)])->setPublic(true);
+
+        if (!$valid) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('The service "controller" cannot reference "internal": "internal" is internal to the "billing" domain.');
+        }
 
         $container->compile();
 
-        $this->assertSame('billing', $container->getDefinition('consumer')->getArgument(0)->getAllowedDomain());
+        $this->assertInstanceOf(\stdClass::class, $container->get('resolver')->dependency->get('argument'));
     }
 
-    public static function provideReferenceReplacements(): iterable
+    public static function provideLocatorContexts(): iterable
     {
-        yield [false];
+        yield ['controller', 'billing', true];
+        yield ['controller', 'shipping', false];
+        yield ['controller::action()', 'billing', true];
+        yield ['controller::action()', 'shipping', false];
+    }
+
+    public function testAServiceSubscriberIsCheckedThroughItsLocator()
+    {
+        $container = new ContainerBuilder();
+        $container->register(DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register(DomainSubscriber::class)->addTag('container.domain', ['domain' => 'shipping'])->addTag('container.service_subscriber')->setAutowired(true)->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "'.DomainSubscriber::class.'" cannot reference "'.DomainImplementation::class.'": "'.DomainImplementation::class.'" is internal to the "billing" domain.');
+
+        $container->compile();
+    }
+
+    public function testARestrictedServiceSubscriberCanUseALocatorOfMembers()
+    {
+        $container = new ContainerBuilder();
+        $container->register(DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register(DomainSubscriber::class)->addTag('container.domain', ['domain' => 'billing', 'restricted' => true])->addTag('container.service_subscriber')->setAutowired(true)->setPublic(true);
+
+        $container->compile();
+
+        $this->assertInstanceOf(DomainImplementation::class, $container->get(DomainSubscriber::class)->locator->get(DomainImplementation::class));
+    }
+
+    public function testTheDomainAttributeDeclaresMemberships()
+    {
+        $container = new ContainerBuilder();
+        $container->register(DomainMigration::class)->setAutoconfigured(true)->setAutowired(true)->setPublic(true);
+        $container->register(DomainConnection::class)->setAutoconfigured(true);
+
+        $container->compile();
+
+        $this->assertSame([['domain' => 'migrations', 'exposed' => false, 'restricted' => true]], $container->getDefinition(DomainMigration::class)->getTag('container.domain'));
+        $this->assertInstanceOf(DomainConnection::class, $container->get(DomainMigration::class)->connection);
+    }
+
+    public function testTheDomainAttributeIsEnforced()
+    {
+        $container = new ContainerBuilder();
+        $container->register(DomainMigration::class)->setAutoconfigured(true)->setAutowired(true)->setPublic(true);
+        $container->register(DomainConnection::class);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "'.DomainMigration::class.'" cannot reference "'.DomainConnection::class.'": "'.DomainMigration::class.'" is restricted to the "migrations" domain.');
+
+        $container->compile();
+    }
+
+    public function testTheDomainAttributeOnAnInterfaceAppliesToItsImplementations()
+    {
+        $container = new ContainerBuilder();
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Fixtures'));
+        $loader->load('domain_services.yml');
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference(Contract::class)])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "consumer" cannot reference "'.Contract::class.'": "'.Contract::class.'" is internal to the "billing" domain.');
+
+        $container->compile();
+    }
+
+    #[DataProvider('provideDecoratedServices')]
+    public function testDecorationDoesNotChangeWhoCanReferenceAService(bool $exposed)
+    {
+        $container = new ContainerBuilder();
+        $container->register('decorated', \stdClass::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => $exposed]);
+        $container->register('decorator', DomainConsumer::class)->setDecoratedService('decorated')->setArguments([new Reference('.inner')]);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('decorated')])->setPublic(true);
+
+        if (!$exposed) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('The service "consumer" cannot reference "decorated": "decorated" is internal to the "billing" domain.');
+        }
+
+        $container->compile();
+
+        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency->dependency);
+    }
+
+    public static function provideDecoratedServices(): iterable
+    {
         yield [true];
+        yield [false];
     }
 
-    #[DataProvider('provideCombinedTypes')]
-    public function testCombinedTypesPreserveAliasExposure(string $glue, ?string $name)
+    public function testARestrictedServiceCanReferenceADecoratedMemberOfItsDomain()
     {
         $container = new ContainerBuilder();
-        $container->register('internal', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing']);
-        $suffix = null === $name ? '' : ' $'.$name;
-        $container->setAlias(DomainApi::class.$suffix, 'internal');
-        $container->setAlias(\Stringable::class.$suffix, 'internal');
-        $type = DomainApi::class.$glue.\Stringable::class;
-        $container->register('consumer', DomainConsumer::class)->setArguments([new TypedReference($type, $type, ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, $name)])->setPublic(true);
+        $container->register('stopwatch', \stdClass::class);
+        $container->register('connection', \stdClass::class)->addTag('container.domain', ['domain' => 'migrations', 'exposed' => true]);
+        $container->register('.debug.connection', DomainConsumer::class)->setDecoratedService('connection')->setArguments([new Reference('.inner'), new Reference('stopwatch')]);
+        $container->register('migration', DomainConsumer::class)->addTag('container.domain', ['domain' => 'migrations', 'restricted' => true])->setArguments([new Reference('connection')])->setPublic(true);
 
         $container->compile();
 
-        $this->assertInstanceOf(DomainImplementation::class, $container->get('consumer')->dependency);
+        $this->assertInstanceOf(\stdClass::class, $container->get('migration')->dependency->dependency);
     }
 
-    public static function provideCombinedTypes(): iterable
-    {
-        yield ['&', null];
-        yield ['|', null];
-        yield ['&', 'selected'];
-        yield ['|', 'selected'];
-    }
-
-    public function testAnAllowanceDoesNotHideAnAliasCycle()
+    public function testAnExposedDecoratorDoesNotExposeTheServiceItDecorates()
     {
         $container = new ContainerBuilder();
-        $container->setAlias('first', 'second');
-        $container->setAlias('second', 'first');
-        $container->register('consumer', DomainConsumer::class)->setArguments([new Reference('first', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, 'billing')])->setPublic(true);
+        $container->register('decorated', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('decorator', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true])->setDecoratedService('decorated')->setArguments([new Reference('.inner')]);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('decorated')])->setPublic(true);
 
-        $this->expectException(ServiceCircularReferenceException::class);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "consumer" cannot reference "decorated": "decorated" is internal to the "billing" domain.');
 
         $container->compile();
+    }
+
+    public function testADecoratorDoesNotJoinTheDomainOfTheServiceItDecorates()
+    {
+        $container = new ContainerBuilder();
+        $container->register('internal', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $container->register('decorated', \stdClass::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => true]);
+        $container->register('decorator', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setDecoratedService('decorated')->setArguments([new Reference('internal')]);
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([new Reference('decorated')])->setPublic(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The service "decorator" cannot reference "internal": "internal" is internal to the "billing" domain.');
+
+        $container->compile();
+    }
+
+    #[DataProvider('provideDecoratorDomains')]
+    public function testDecoratingAnInternalServiceRequiresBelongingToItsDomain(?string $domain, bool $valid)
+    {
+        $container = new ContainerBuilder();
+        $container->register('decorated', \stdClass::class)->addTag('container.domain', ['domain' => 'billing']);
+        $decorator = $container->register('decorator', DomainConsumer::class)->setDecoratedService('decorated')->setArguments([new Reference('.inner')]);
+        if (null !== $domain) {
+            $decorator->addTag('container.domain', ['domain' => $domain]);
+        }
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'billing'])->setArguments([new Reference('decorated')])->setPublic(true);
+
+        if (!$valid) {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('The service "decorator" cannot reference "decorator.inner": "decorator.inner" is internal to the "billing" domain.');
+        }
+
+        $container->compile();
+
+        $this->assertInstanceOf(\stdClass::class, $container->get('consumer')->dependency->dependency);
+    }
+
+    public static function provideDecoratorDomains(): iterable
+    {
+        yield ['billing', true];
+        yield [null, true];
+        yield ['shipping', false];
+    }
+
+    #[DataProvider('provideInvalidTags')]
+    public function testInvalidTags(array $attributes, string $message)
+    {
+        $container = new ContainerBuilder();
+        $container->register('foo', \stdClass::class)->addTag('container.domain', $attributes)->setPublic(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+
+        $container->compile();
+    }
+
+    public static function provideInvalidTags(): iterable
+    {
+        yield [[], 'The "container.domain" tag on service "foo" requires a non-empty "domain" attribute.'];
+        yield [['domain' => ''], 'The "container.domain" tag on service "foo" requires a non-empty "domain" attribute.'];
+        yield [['domain' => 'billing', 'exposed' => 'no'], 'The "exposed" attribute of the "container.domain" tag on service "foo" must be a boolean.'];
+        yield [['domain' => 'billing', 'restricted' => 1], 'The "restricted" attribute of the "container.domain" tag on service "foo" must be a boolean.'];
+    }
+
+    private function createContainerWithReference(string $kind, bool $exposed): ContainerBuilder
+    {
+        $container = new ContainerBuilder();
+        $container->register('target', DomainImplementation::class)->addTag('container.domain', ['domain' => 'billing', 'exposed' => $exposed])->addTag('handler')->setPublic(true);
+        $container->setAlias('alias', 'target');
+        $container->register('.hidden', DomainConsumer::class)->setArguments([new Reference('target')]);
+        $argument = match ($kind) {
+            'direct' => new Reference('target'),
+            'alias' => new Reference('alias'),
+            'locator' => new ServiceLocatorArgument(['target' => new Reference('target')]),
+            'iterator' => new TaggedIteratorArgument('handler'),
+            'expression' => new Expression('service("target")'),
+            'inline' => new Definition(DomainConsumer::class, [new Reference('target')]),
+            'lazy' => new LazyProxyArgument(new TypedReference('target', DomainApi::class)),
+            'hidden' => new Reference('.hidden'),
+        };
+        $container->register('consumer', DomainConsumer::class)->addTag('container.domain', ['domain' => 'shipping'])->setArguments([$argument])->setPublic(true);
+
+        return $container;
     }
 }
 
@@ -534,12 +554,8 @@ interface DomainApi
 {
 }
 
-class DomainImplementation implements DomainApi, \Stringable
+class DomainImplementation implements DomainApi
 {
-    public function __toString(): string
-    {
-        return 'billing';
-    }
 }
 
 #[Domain('migrations', restricted: true)]
@@ -550,14 +566,19 @@ class DomainMigration
     }
 }
 
-#[ExposeTo('migrations')]
+#[Domain('migrations', exposed: true)]
 class DomainConnection
 {
 }
 
-class DomainAllowedConsumer
+class DomainSubscriber implements ServiceSubscriberInterface
 {
-    public function __construct(#[Autowire(service: 'internal', allowDomain: 'billing')] public mixed $dependency)
+    public function __construct(public PsrContainerInterface $locator)
     {
+    }
+
+    public static function getSubscribedServices(): array
+    {
+        return [DomainImplementation::class];
     }
 }

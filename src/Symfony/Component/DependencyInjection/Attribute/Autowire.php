@@ -12,7 +12,6 @@
 namespace Symfony\Component\DependencyInjection\Attribute;
 
 use Symfony\Component\DependencyInjection\Argument\ArgumentInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\ExpressionLanguage\Expression;
@@ -45,7 +44,6 @@ class Autowire
         ?string $env = null,
         ?string $param = null,
         bool|string|array $lazy = false,
-        ?string $allowDomain = null,
     ) {
         if ($this->lazy = \is_string($lazy) ? [$lazy] : $lazy) {
             if (null !== ($expression ?? $env ?? $param)) {
@@ -66,12 +64,8 @@ class Autowire
             };
         }
 
-        if (null !== $allowDomain && null === $service) {
-            throw new LogicException('#[Autowire] attribute can only allow a domain when referencing a service.');
-        }
-
         $this->value = match (true) {
-            null !== $service => new Reference($service, ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, $allowDomain),
+            null !== $service => new Reference($service),
             null !== $expression => class_exists(Expression::class) ? new Expression($expression) : throw new LogicException('Unable to use expressions as the Symfony ExpressionLanguage component is not installed. Try running "composer require symfony/expression-language".'),
             null !== $env => "%env($env)%",
             null !== $param => "%$param%",

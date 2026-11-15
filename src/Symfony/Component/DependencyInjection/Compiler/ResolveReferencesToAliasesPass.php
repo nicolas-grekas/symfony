@@ -33,7 +33,7 @@ class ResolveReferencesToAliasesPass extends AbstractRecursivePass
             $this->currentId = $id;
 
             if ($aliasId !== $defId = $this->getDefinitionId($aliasId, $container)) {
-                $newAlias = $container->setAlias($id, $defId)->setPublic($alias->isPublic())->setExposed($alias->isExposed())->setDomains($alias->getDomains())->setAllowedDomains($alias->getAllowedDomains());
+                $newAlias = $container->setAlias($id, $defId)->setPublic($alias->isPublic());
 
                 if ($alias->isDeprecated()) {
                     $newAlias->setDeprecated(...array_values($alias->getDeprecation('%alias_id%')));
@@ -50,7 +50,7 @@ class ResolveReferencesToAliasesPass extends AbstractRecursivePass
 
         $defId = $this->getDefinitionId($id = (string) $value, $this->container);
 
-        return $defId !== $id ? new Reference($defId, $value->getInvalidBehavior(), $value->getAllowedDomain()) : $value;
+        return $defId !== $id ? new Reference($defId, $value->getInvalidBehavior()) : $value;
     }
 
     private function getDefinitionId(string $id, ContainerBuilder $container): string

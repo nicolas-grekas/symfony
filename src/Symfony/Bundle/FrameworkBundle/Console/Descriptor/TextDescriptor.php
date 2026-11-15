@@ -292,14 +292,10 @@ class TextDescriptor extends Descriptor
         $tagsNames = array_keys($maxTags);
 
         $tableHeaders = array_merge(['Service ID'], $tagsNames, ['Class name']);
-        if (isset($options['domain'])) {
-            $tableHeaders = array_merge($tableHeaders, ['Domains', 'Exposed', 'Restricted domains', 'Allowed domains']);
-        }
         $tableRows = [];
         $rawOutput = isset($options['raw_text']) && $options['raw_text'];
         foreach ($serviceIds as $serviceId) {
             $definition = $this->resolveServiceDefinition($container, $serviceId);
-            $firstRow = \count($tableRows);
 
             $styledServiceId = $rawOutput ? $serviceId : \sprintf('<fg=cyan>%s</fg=cyan>', OutputFormatter::escape($serviceId));
             if ($definition instanceof Definition) {
@@ -328,18 +324,9 @@ class TextDescriptor extends Descriptor
             } else {
                 $tableRows[] = array_merge([$styledServiceId, $definition::class], $tagsCount ? array_fill(0, $tagsCount, '') : []);
             }
-            if (isset($options['domain'])) {
-                $domain = $this->getContainerDomainData($container, $serviceId);
-                for ($i = $firstRow; $i < \count($tableRows); ++$i) {
-                    array_push($tableRows[$i], implode(', ', $domain['domains']), $domain['exposed'] ? 'yes' : 'no', implode(', ', $domain['restricted_domains']), implode(', ', $domain['allowed_domains']));
-                }
-            }
         }
 
         $options['output']->table($tableHeaders, $tableRows);
-        if (isset($options['domain'])) {
-            $this->describeDomainReferences($container, $options);
-        }
     }
 
     protected function describeContainerDefinition(Definition $definition, array $options = [], ?ContainerBuilder $container = null): void
@@ -388,12 +375,6 @@ class TextDescriptor extends Descriptor
         }
 
         $tableRows[] = ['Public', $definition->isPublic() ? 'yes' : 'no'];
-        if ($domain = $this->getContainerDomainData($container, $options['id'] ?? null)) {
-            $tableRows[] = ['Domains', implode(', ', $domain['domains']) ?: 'none'];
-            $tableRows[] = ['Exposed', $domain['exposed'] ? 'yes' : 'no'];
-            $tableRows[] = ['Restricted domains', implode(', ', $domain['restricted_domains']) ?: 'none'];
-            $tableRows[] = ['Allowed domains', implode(', ', $domain['allowed_domains']) ?: 'none'];
-        }
         $tableRows[] = ['Synthetic', $definition->isSynthetic() ? 'yes' : 'no'];
         $tableRows[] = ['Lazy', $definition->isLazy() ? 'yes' : 'no'];
         $tableRows[] = ['Shared', $definition->isShared() ? 'yes' : 'no'];
@@ -468,9 +449,6 @@ class TextDescriptor extends Descriptor
         $tableRows[] = ['Usages', $inEdges ? implode(\PHP_EOL, $inEdges) : 'none'];
 
         $options['output']->table($tableHeaders, $tableRows);
-        if (null !== $container && isset($options['id'])) {
-            $this->describeDomainReferences($container, $options);
-        }
 
         if (isset($options['id']) && $container) {
             $stack = $this->getDecorationStack($container, $options['id']);
@@ -520,13 +498,6 @@ class TextDescriptor extends Descriptor
             return;
         }
 
-        if ($domain = $this->getContainerDomainData($container, $options['id'] ?? null)) {
-            $options['output']->table(['Alias property', 'Value'], [
-                ['Domains', implode(', ', $domain['domains']) ?: 'none'],
-                ['Exposed', $domain['exposed'] ? 'yes' : 'no'],
-                ['Allowed domains', implode(', ', $domain['allowed_domains']) ?: 'none'],
-            ]);
-        }
         $this->describeContainerDefinition($container->getDefinition((string) $alias), array_merge($options, ['id' => (string) $alias]), $container);
     }
 
@@ -664,20 +635,6 @@ class TextDescriptor extends Descriptor
     protected function describeCallable(mixed $callable, array $options = []): void
     {
         $this->writeText($this->formatCallable($callable), $options);
-    }
-
-    private function describeDomainReferences(ContainerBuilder $container, array $options): void
-    {
-        $rows = [];
-        foreach ($this->getContainerDomainReferences($container, $options['domain'] ?? null, $options['id'] ?? null) as $source => $targets) {
-            foreach ($targets as $reference) {
-                $rows[] = [$source, $reference['service'], $reference['access'], $reference['allow_domain'] ?? ''];
-            }
-        }
-        if ($rows) {
-            $options['output']->section('Domain dependencies');
-            $options['output']->table(['Consumer', 'Dependency', 'Access', 'Allowed domain'], $rows);
-        }
     }
 
     private function renderEventListenerTable(EventDispatcherInterface $eventDispatcher, string $event, array $eventListeners, SymfonyStyle $io): void

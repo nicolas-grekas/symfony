@@ -245,22 +245,11 @@ class XmlDumper extends Dumper
     private function addServiceAlias(string $alias, Alias $id): iterable
     {
         $xmlAttr = \sprintf(' id="%s" alias="%s"%s', $this->encode($alias), $this->encode($id), $id->isPublic() ? ' public="true"' : '');
-        if (null !== $id->isExposed()) {
-            $xmlAttr .= ' exposed="'.($id->isExposed() ? 'true' : 'false').'"';
-        }
 
-        if ($id->isDeprecated() || $id->getAllowedDomains() || $id->getDomains()) {
+        if ($id->isDeprecated()) {
+            $deprecation = $id->getDeprecation('%alias_id%');
             yield \sprintf('<service%s>', $xmlAttr);
-            if ($id->isDeprecated()) {
-                $deprecation = $id->getDeprecation('%alias_id%');
-                yield \sprintf('  <deprecated package="%s" version="%s">%s</deprecated>', $this->encode($deprecation['package']), $this->encode($deprecation['version']), $this->encode($deprecation['message'], 0));
-            }
-            foreach ($id->getDomains() ?? [] as $domain) {
-                yield \sprintf('  <domain name="%s"/>', $this->encode($domain));
-            }
-            foreach ($id->getAllowedDomains() as $domain) {
-                yield \sprintf('  <exposed-to domain="%s"/>', $this->encode($domain));
-            }
+            yield \sprintf('  <deprecated package="%s" version="%s">%s</deprecated>', $this->encode($deprecation['package']), $this->encode($deprecation['version']), $this->encode($deprecation['message'], 0));
             yield '</service>';
         } else {
             yield \sprintf('<service%s/>', $xmlAttr);
@@ -281,14 +270,11 @@ class XmlDumper extends Dumper
         }
 
         $aliases = $this->container->getAliases();
-        foreach ($aliases as $alias => $originalAlias) {
-            $id = $originalAlias;
+        foreach ($aliases as $alias => $id) {
             while (isset($aliases[(string) $id])) {
                 $id = $aliases[(string) $id];
             }
-            $resolvedAlias = clone $id;
-            $resolvedAlias->setExposed($originalAlias->isExposed())->setDomains($originalAlias->getDomains())->setAllowedDomains($originalAlias->getAllowedDomains());
-            foreach ($this->addServiceAlias($alias, $resolvedAlias) as $line) {
+            foreach ($this->addServiceAlias($alias, $id) as $line) {
                 yield '  '.$line;
             }
         }
@@ -438,9 +424,6 @@ class XmlDumper extends Dumper
                     $xmlAttr .= ' type="service"';
                 }
                 $xmlAttr .= \sprintf(' id="%s"', $this->encode((string) $value));
-                if (null !== $domain = $value->getAllowedDomain()) {
-                    $xmlAttr .= \sprintf(' allow-domain="%s"', $this->encode($domain));
-                }
                 $xmlAttr .= match ($value->getInvalidBehavior()) {
                     ContainerInterface::NULL_ON_INVALID_REFERENCE => ' on-invalid="null"',
                     ContainerInterface::IGNORE_ON_INVALID_REFERENCE => ' on-invalid="ignore"',

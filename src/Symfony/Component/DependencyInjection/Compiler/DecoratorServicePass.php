@@ -58,14 +58,11 @@ class DecoratorServicePass extends AbstractRecursivePass
         // before this pass; it's read here for container builders that keep it around.
         $tagsToKeep = $container->hasParameter('container.behavior_describing_tags')
             ? $container->getParameter('container.behavior_describing_tags')
-            : ['proxy', 'container.do_not_inline', 'container.service_locator', 'container.service_subscriber', 'container.service_subscriber.locator'];
-        $tagsToKeep = array_merge($tagsToKeep, ['container.domain', 'container.exposed_to']);
-        $domains = new ServiceDomain($container);
+            : ['proxy', 'container.do_not_inline', 'container.service_locator', 'container.service_subscriber', 'container.service_subscriber.locator', 'container.domain'];
 
         foreach (self::delayDecoratorsOfDecorators($container, iterator_to_array($definitions, false)) as [$id, $definition]) {
             $decoratedService = $definition->getDecoratedService();
             [$inner, $renamedId] = $decoratedService;
-            $domain = $domains->get($inner);
             $invalidBehavior = $decoratedService[3] ?? ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE;
 
             $definition->setDecoratedService(null);
@@ -87,11 +84,7 @@ class DecoratorServicePass extends AbstractRecursivePass
             if ($container->hasAlias($inner)) {
                 $alias = $container->getAlias($inner);
                 $public = $alias->isPublic();
-                $innerAlias = new Alias((string) $alias, false);
-                if ($domain['domains'] || $domain['allowed']) {
-                    $innerAlias->setExposed(false);
-                }
-                $container->setAlias($renamedId, $innerAlias);
+                $container->setAlias($renamedId, new Alias((string) $alias, false));
                 $decoratedDefinition = $container->findDefinition($alias);
             } elseif ($container->hasDefinition($inner)) {
                 $decoratedDefinition = $container->getDefinition($inner);
@@ -131,10 +124,7 @@ class DecoratorServicePass extends AbstractRecursivePass
                 $decoratingDefinitions[$inner] = $definition;
             }
 
-            $alias = $container->setAlias($inner, $id)->setPublic($public);
-            if ($domain['domains'] || $domain['allowed'] || $definition->hasTag('container.domain') || $definition->hasTag('container.exposed_to')) {
-                $alias->setDomains($domain['domains'])->setExposed($domain['exposed'])->setAllowedDomains($domain['allowed']);
-            }
+            $container->setAlias($inner, $id)->setPublic($public);
         }
 
         foreach ($decoratingDefinitions as $inner => $definition) {
@@ -145,7 +135,7 @@ class DecoratorServicePass extends AbstractRecursivePass
     protected function processValue(mixed $value, bool $isRoot = false): mixed
     {
         if ($value instanceof Reference && '.inner' === (string) $value) {
-            return new Reference($this->currentId, $value->getInvalidBehavior(), $value->getAllowedDomain());
+            return new Reference($this->currentId, $value->getInvalidBehavior());
         }
 
         return parent::processValue($value, $isRoot);

@@ -192,7 +192,7 @@ class MarkdownDescriptor extends Descriptor
             $this->write("\n\nAliases\n-------\n");
             foreach ($services['aliases'] as $id => $service) {
                 $this->write("\n");
-                $this->describeContainerAlias($service, ['id' => $id, 'domain_data' => $this->getContainerDomainData($container, $id)]);
+                $this->describeContainerAlias($service, ['id' => $id]);
             }
         }
 
@@ -202,9 +202,6 @@ class MarkdownDescriptor extends Descriptor
                 $this->write("\n");
                 $this->write(\sprintf('- `%s`: `%s`', $id, $service::class));
             }
-        }
-        if (isset($options['domain'])) {
-            $this->describeDomainReferences($container, $options['domain']);
         }
     }
 
@@ -284,10 +281,6 @@ class MarkdownDescriptor extends Descriptor
         }
 
         $this->write(isset($options['id']) ? \sprintf("### %s\n\n%s\n", $options['id'], $output) : $output);
-        $this->describeDomainData($this->getContainerDomainData($container, $options['id'] ?? null));
-        if (null !== $container && isset($options['id'])) {
-            $this->describeDomainReferences($container, null, $options['id']);
-        }
     }
 
     protected function describeContainerAlias(Alias $alias, array $options = [], ?ContainerBuilder $container = null): void
@@ -302,7 +295,6 @@ class MarkdownDescriptor extends Descriptor
         }
 
         $this->write(\sprintf("### %s\n\n%s\n", $options['id'], $output));
-        $this->describeDomainData($options['domain_data'] ?? $this->getContainerDomainData($container, $options['id']));
 
         if (!$container) {
             return;
@@ -447,27 +439,6 @@ class MarkdownDescriptor extends Descriptor
         }
 
         throw new \InvalidArgumentException('Callable is not describable.');
-    }
-
-    private function describeDomainData(array $data): void
-    {
-        foreach ($data as $name => $value) {
-            $this->write(\sprintf("- %s: %s\n", ucfirst(str_replace('_', ' ', $name)), \is_array($value) ? implode(', ', $value) : ($value ? 'yes' : 'no')));
-        }
-    }
-
-    private function describeDomainReferences(ContainerBuilder $container, ?string $domain = null, ?string $id = null): void
-    {
-        $references = $this->getContainerDomainReferences($container, $domain, $id);
-        if (!$references) {
-            return;
-        }
-        $this->write("\nDomain dependencies\n-------------------\n");
-        foreach ($references as $source => $targets) {
-            foreach ($targets as $reference) {
-                $this->write(\sprintf("- `%s` -> `%s`: %s%s\n", $source, $reference['service'], $reference['access'], null === $reference['allow_domain'] ? '' : ' ('.$reference['allow_domain'].')'));
-            }
-        }
     }
 
     private function formatRouterConfig(array $array): string

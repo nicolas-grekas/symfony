@@ -238,8 +238,6 @@
       "type": "object",
       "properties": {
         "alias": { "type": "string" },
-        "exposed": { "type": ["boolean", "null"] },
-        "allowed_domains": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "public": { "type": ["boolean", "null"] },
         "deprecated": { "$ref": "#/$defs/deprecation" }
       },

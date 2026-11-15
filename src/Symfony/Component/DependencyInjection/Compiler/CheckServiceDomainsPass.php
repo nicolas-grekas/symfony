@@ -12,23 +12,27 @@
 namespace Symfony\Component\DependencyInjection\Compiler;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
+ * Checks that the services that belong to a domain only reference services they can access.
+ *
+ * A service can reference the services of its own domains, the exposed services of other domains and the services that belong to no domain.
+ * A restricted service can only reference the services of the domain it is restricted to.
+ * A service that belongs to no domain is not checked.
+ *
  * @internal
  */
 final class CheckServiceDomainsPass extends AbstractRecursivePass
 {
     protected bool $skipScalars = true;
 
-    private ServiceDomain $domains;
-    private array $source;
-    private Definition $sourceDefinition;
-    private array $visiting = [];
-    private array $references = [];
-    private bool $enabled;
+    /**
+     * @var array<string, array{array<string, string>, bool, array<string, string>}>
+     */
+    private array $domains = [];
+    private array $visited = [];
 
     public function __construct()
     {
@@ -37,120 +41,126 @@ final class CheckServiceDomainsPass extends AbstractRecursivePass
 
     public function process(ContainerBuilder $container): void
     {
-        $this->domains = new ServiceDomain($container);
-        $services = [];
-        foreach ($container->getDefinitions() as $id => $definition) {
-            $info = $this->domains->getDefinition($definition, $id);
-            if ($info['domains'] || $info['allowed']) {
-                $services[$id] = $info;
-            }
-        }
-        foreach ($container->getAliases() as $id => $alias) {
-            if ($alias->getDomains() || $alias->getAllowedDomains() || $services) {
-                $info = $this->domains->get($id);
-                if ($info['domains'] || $info['allowed']) {
-                    $services[$id] = $info;
-                    $alias->setDomains($info['domains'])->setExposed($info['exposed'])->setAllowedDomains($info['allowed']);
+        $this->domains = [];
+
+        foreach ($container->findTaggedServiceIds('container.domain') as $id => $tags) {
+            $domains = $restricted = [];
+            $exposed = false;
+
+            foreach ($tags as $tag) {
+                if (!\is_string($domain = $tag['domain'] ?? null) || '' === $domain) {
+                    throw new InvalidArgumentException(\sprintf('The "container.domain" tag on service "%s" requires a non-empty "domain" attribute.', $id));
+                }
+                foreach (['exposed', 'restricted'] as $option) {
+                    if (!\is_bool($tag[$option] ?? false)) {
+                        throw new InvalidArgumentException(\sprintf('The "%s" attribute of the "container.domain" tag on service "%s" must be a boolean.', $option, $id));
+                    }
+                }
+
+                $domains[$domain] = $domain;
+                $exposed = $exposed || ($tag['exposed'] ?? false);
+                if ($tag['restricted'] ?? false) {
+                    $restricted[$domain] = $domain;
                 }
             }
+
+            $this->domains[$id] = [$domains, $exposed, $restricted];
         }
-        $this->enabled = (bool) $services;
-        $this->references = [];
-        $this->visiting = [];
 
-        parent::process($container);
+        if (!$this->domains) {
+            return;
+        }
 
-        if ($services || $this->references) {
-            ksort($services);
-            ksort($this->references);
-            // Build parameters that contain arrays are kept in the runtime container.
-            $container->setParameter('.container.domains', json_encode($services, \JSON_THROW_ON_ERROR));
-            $container->setParameter('.container.domain_references', json_encode($this->references, \JSON_THROW_ON_ERROR));
+        $this->container = $container;
+
+        try {
+            foreach ($this->domains as $id => $_) {
+                $this->currentId = $id;
+                $this->visited = [];
+                parent::processValue($container->getDefinition($id));
+            }
+
+            // A locator that was created for a service, or for one of its methods, is checked as this service
+            foreach ($container->findTaggedServiceIds('container.service_locator_context') as $id => $tags) {
+                $consumer = $tags[0]['id'] ?? '';
+
+                if (!isset($this->domains[$consumer])) {
+                    $consumer = strstr($consumer, '::', true) ?: '';
+                }
+
+                if (isset($this->domains[$consumer])) {
+                    $this->currentId = $consumer;
+                    $this->visited = [];
+                    $this->processValue(new Reference($id));
+                }
+            }
+        } finally {
+            $this->container = null;
+            $this->domains = $this->visited = [];
         }
     }
 
     protected function processValue(mixed $value, bool $isRoot = false): mixed
     {
-        if ($value instanceof Definition) {
-            if ($isRoot) {
-                if ($value->isAbstract() || $value->isSynthetic() || $this->isLocator($value)) {
-                    return $value;
-                }
-                $this->sourceDefinition = $value;
-                $this->source = $this->domains->getDefinition($value, $this->currentId);
-            }
-
-            return parent::processValue($value, $isRoot);
-        }
-        if (!$value instanceof Reference || !$this->container->hasDefinition((string) $value) && !$this->container->hasAlias((string) $value)) {
+        if (!$value instanceof Reference) {
             return parent::processValue($value, $isRoot);
         }
 
-        $id = (string) $value;
-        $allowed = $value->getAllowedDomain();
-        if (!$this->enabled && null === $allowed) {
+        if (null === $id = $this->getDefinitionId((string) $value)) {
             return $value;
         }
-        $target = $this->domains->get($id);
-        try {
-            $definition = $this->container->findDefinition($id);
-        } catch (ServiceNotFoundException) {
-            return $value;
-        }
-        if (null === $allowed && $this->isLocator($definition)) {
-            if (!isset($this->visiting[$id])) {
-                $this->visiting[$id] = true;
-                parent::processValue($definition);
-                unset($this->visiting[$id]);
-            }
 
-            return $value;
-        }
-        $access = null;
+        $definition = $this->container->getDefinition($id);
 
-        if (null !== $allowed) {
-            if (!\in_array($allowed, $target['domains'], true)) {
-                $this->sourceDefinition->addError(\sprintf('The service "%s" allows access to the "%s" domain through "%s", but this service does not belong to that domain.', $this->currentId, $allowed, $id));
-                $access = 'forbidden';
-            } else {
-                $access = 'reference';
-            }
-        }
-        if (null === $access && isset($this->sourceDefinition->innerServiceId) && $id === $this->sourceDefinition->innerServiceId) {
-            $access = 'decoration';
-        }
-        if (null === $access) {
-            foreach ($this->source['restricted'] as $domain) {
-                if (!\in_array($domain, $target['domains'], true) && !\in_array($domain, $target['allowed'], true)) {
-                    $this->sourceDefinition->addError(\sprintf('The service "%s" cannot reference "%s": this service is not available to the restricted "%s" domain. Grant access to that domain on the service or alias.', $this->currentId, $id, $domain));
-                    $access = 'forbidden';
+        // Locators, lazy proxies and anonymous services are hidden services that are generated for the service that references them.
+        // When they belong to no domain, their references are checked as references of that service.
+        if (null === $definition->innerServiceId && '.' === $id[0] && !isset($this->domains[$id])) {
+            if (!isset($this->visited[$id])) {
+                $this->visited[$id] = true;
+
+                if ($definition->hasTag('container.service_locator_context')) {
+                    $this->processValue($definition->getFactory()[0] ?? null);
+                } else {
+                    parent::processValue($definition);
                 }
             }
+
+            return $value;
         }
-        if (null === $access) {
-            if (array_intersect($this->source['domains'], $target['domains'])) {
-                $access = 'member';
-            } elseif (array_intersect($this->source['domains'], $target['allowed'])) {
-                $access = 'grant';
-            } elseif ($target['exposed']) {
-                $access = 'exposed';
-            } elseif ($target['domains']) {
-                $this->sourceDefinition->addError(\sprintf('The service "%s" cannot reference "%s": this service is internal to the "%s" domain. Use an exposed alias or explicitly allow access to this domain.', $this->currentId, $id, implode('", "', $target['domains'])));
-                $access = 'forbidden';
-            }
+
+        // Decorating a service does not change who can reference it
+        while (null !== $definition->innerServiceId && null !== $inner = $this->getDefinitionId($definition->innerServiceId)) {
+            $definition = $this->container->getDefinition($id = $inner);
         }
-        if ($target['domains'] || $target['allowed'] || $this->source['domains'] || $this->source['allowed'] || null !== $allowed) {
-            $reference = ['service' => $id, 'domains' => $target['domains'], 'access' => $access ?? 'unrestricted', 'allow_domain' => $allowed];
-            if (!\in_array($reference, $this->references[$this->currentId] ?? [], true)) {
-                $this->references[$this->currentId][] = $reference;
-            }
+
+        [$domains, $exposed] = $this->domains[$id] ?? [[], false];
+        [$consumerDomains, , $restricted] = $this->domains[$this->currentId];
+
+        if ($restricted = array_diff($restricted, $domains)) {
+            $error = \sprintf('"%s" is restricted to the "%s" domain%s. Add "%s" to %s to allow it.', $this->currentId, implode('", "', $restricted), 1 < \count($restricted) ? 's' : '', $value, 1 < \count($restricted) ? 'these domains' : 'this domain');
+        } elseif ($domains && !$exposed && !array_intersect($consumerDomains, $domains)) {
+            $error = \sprintf('"%s" is internal to the "%s" domain%s. Expose it or add "%s" to %s.', $value, implode('", "', $domains), 1 < \count($domains) ? 's' : '', $this->currentId, 1 < \count($domains) ? 'one of these domains' : 'this domain');
+        } else {
+            return $value;
         }
+
+        $this->container->getDefinition($this->currentId)->addError(\sprintf('The service "%s" cannot reference "%s": ', $this->currentId, $value).$error);
 
         return $value;
     }
 
-    private function isLocator(Definition $definition): bool
+    private function getDefinitionId(string $id): ?string
     {
-        return !$definition->hasTag('container.domain') && !$definition->hasTag('container.exposed_to') && ($definition->hasTag('container.service_locator') || $definition->hasTag('container.service_locator_context'));
+        $seen = [];
+
+        while ($this->container->hasAlias($id)) {
+            if (isset($seen[$id])) {
+                return null;
+            }
+            $seen[$id] = true;
+            $id = (string) $this->container->getAlias($id);
+        }
+
+        return $this->container->hasDefinition($id) ? $id : null;
     }
 }

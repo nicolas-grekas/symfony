@@ -12,7 +12,6 @@
 namespace Symfony\Component\DependencyInjection\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Reference;
 
 class ReferenceTest extends TestCase
@@ -21,16 +20,5 @@ class ReferenceTest extends TestCase
     {
         $ref = new Reference('foo');
         $this->assertEquals('foo', (string) $ref, '__construct() sets the id of the reference, which is used for the __toString() method');
-    }
-
-    public function testSerializationPreservesDomainAllowances()
-    {
-        foreach ([null, 'billing'] as $domain) {
-            $reference = new Reference('foo', ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE, $domain);
-            $copy = unserialize(serialize($reference), ['allowed_classes' => [Reference::class]]);
-
-            $this->assertSame($domain, $copy->getAllowedDomain());
-            $this->assertSame(serialize($reference), serialize($copy));
-        }
     }
 }

@@ -100,7 +100,7 @@ class ReplaceAliasByActualDefinitionPass extends AbstractRecursivePass
         if ($value instanceof Reference && isset($this->replacements[$referenceId = (string) $value])) {
             // Perform the replacement
             $newId = $this->replacements[$referenceId];
-            $value = new Reference($newId, $value->getInvalidBehavior(), $value->getAllowedDomain());
+            $value = new Reference($newId, $value->getInvalidBehavior());
             $this->container->log($this, \sprintf('Changed reference of service "%s" previously pointing to "%s" to "%s".', $this->currentId, $referenceId, $newId));
         }
 
