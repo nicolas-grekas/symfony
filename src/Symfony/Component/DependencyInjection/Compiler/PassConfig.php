@@ -78,6 +78,7 @@ class PassConfig
             new ResolveTaggedIteratorArgumentPass(),
             new ResolveTaggedClassMapArgumentPass(),
             new ResolveServiceSubscribersPass(),
+            new CheckServiceDomainsPass(),
             new ResolveReferencesToAliasesPass(),
             new ResolveInvalidReferencesPass(),
             new AnalyzeServiceReferencesPass(true),

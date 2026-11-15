@@ -58,7 +58,7 @@ class DecoratorServicePass extends AbstractRecursivePass
         // before this pass; it's read here for container builders that keep it around.
         $tagsToKeep = $container->hasParameter('container.behavior_describing_tags')
             ? $container->getParameter('container.behavior_describing_tags')
-            : ['proxy', 'container.do_not_inline', 'container.service_locator', 'container.service_subscriber', 'container.service_subscriber.locator'];
+            : ['proxy', 'container.do_not_inline', 'container.service_locator', 'container.service_subscriber', 'container.service_subscriber.locator', 'container.domain'];
 
         foreach (self::delayDecoratorsOfDecorators($container, iterator_to_array($definitions, false)) as [$id, $definition]) {
             $decoratedService = $definition->getDecoratedService();

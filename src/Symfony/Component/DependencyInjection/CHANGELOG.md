@@ -4,6 +4,7 @@ CHANGELOG
 8.2
 ---
 
+ * Add the `#[Domain]` attribute and the `container.domain` tag to group services in domains and check the references between them
  * [BC BREAK] Make `#[AutowireCallable]` and `#[AutowireMethodOf]` lazy by default
  * Add the `on_shutdown` attribute on `kernel.reset` tags to pass a shutdown flag or call a method only on shutdown
  * Add argument `$shutdown` to `Container::reset()`

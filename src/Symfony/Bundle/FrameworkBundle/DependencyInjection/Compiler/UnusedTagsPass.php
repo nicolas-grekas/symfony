@@ -36,6 +36,7 @@ class UnusedTagsPass implements CompilerPassInterface
         'console.command.service_arguments',
         'container.callable_service',
         'container.decoration_order',
+        'container.domain',
         'container.env_var_loader',
         'container.env_var_processor',
         'container.excluded',
