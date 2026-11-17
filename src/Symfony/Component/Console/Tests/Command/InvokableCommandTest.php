@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\Ask;
+use Symfony\Component\Console\Attribute\MapInput;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Completion\CompletionInput;
@@ -28,10 +29,12 @@ use Symfony\Component\Console\Exception\InvalidOptionException;
 use Symfony\Component\Console\Exception\LogicException;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\NullOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Tests\Fixtures\InvokableTestCommand;
+use Symfony\Component\Console\Tests\Fixtures\PromotedPropertiesInputDto;
 
 class InvokableCommandTest extends TestCase
 {
@@ -526,6 +529,25 @@ class InvokableCommandTest extends TestCase
         $this->expectExceptionMessage('The "--a" option requires a value.');
 
         $command->run(new ArrayInput(['--a' => null]), new NullOutput());
+    }
+
+    public function testMapInputWithPromotedProperties()
+    {
+        $command = new Command('foo');
+        $command->setCode(static function (OutputInterface $output, #[MapInput] PromotedPropertiesInputDto $input): int {
+            $output->write($input->name.' '.$input->count);
+
+            return 0;
+        });
+
+        $argument = $command->getDefinition()->getArgument('name');
+        $this->assertFalse($argument->isRequired());
+        $this->assertSame('anonymous', $argument->getDefault());
+        $this->assertSame(42, $command->getDefinition()->getOption('count')->getDefault());
+
+        $command->run(new ArrayInput([]), $output = new BufferedOutput());
+
+        $this->assertSame('anonymous 42', $output->fetch());
     }
 
     public function testHelpersInjection()

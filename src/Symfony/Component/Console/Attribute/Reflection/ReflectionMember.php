@@ -69,16 +69,18 @@ class ReflectionMember
 
     public function hasDefaultValue(): bool
     {
-        if ($this->member instanceof \ReflectionParameter) {
-            return $this->member->isDefaultValueAvailable();
+        $member = $this->getDefaultValueMember();
+
+        if ($member instanceof \ReflectionParameter) {
+            return $member->isDefaultValueAvailable();
         }
 
-        return $this->member->hasDefaultValue();
+        return $member->hasDefaultValue();
     }
 
     public function getDefaultValue(): mixed
     {
-        $defaultValue = $this->member->getDefaultValue();
+        $defaultValue = $this->getDefaultValueMember()->getDefaultValue();
 
         if ($defaultValue instanceof \BackedEnum) {
             return $defaultValue->value;
@@ -105,5 +107,14 @@ class ReflectionMember
     public function isProperty(): bool
     {
         return $this->member instanceof \ReflectionProperty;
+    }
+
+    private function getDefaultValueMember(): \ReflectionParameter|\ReflectionProperty
+    {
+        if ($this->member instanceof \ReflectionProperty && $this->member->isPromoted()) {
+            return new \ReflectionParameter([$this->member->class, '__construct'], $this->member->name);
+        }
+
+        return $this->member;
     }
 }
