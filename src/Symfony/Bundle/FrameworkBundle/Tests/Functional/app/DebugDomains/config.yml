@@ -1,0 +1,26 @@
+imports:
+    - { resource: ../config/default.yml }
+
+services:
+    billing.checkout:
+        class: stdClass
+        arguments: ['@billing.invoices', '@shipping.shipments']
+        tags: [{ name: container.domain, domain: billing }]
+
+    billing.invoices:
+        class: stdClass
+        arguments: ['@infrastructure.cache.pool']
+        tags: [{ name: container.domain, domain: billing }]
+
+    shipping.shipments:
+        class: stdClass
+        arguments: ['@infrastructure.doctrine.factory']
+        tags: [{ name: container.domain, domain: shipping, exposed: true }]
+
+    infrastructure.cache.pool:
+        class: stdClass
+        tags: [{ name: container.domain, domain: infrastructure.cache, exposed: true }]
+
+    infrastructure.doctrine.factory:
+        class: stdClass
+        tags: [{ name: container.domain, domain: infrastructure.doctrine, exposed: true }]
